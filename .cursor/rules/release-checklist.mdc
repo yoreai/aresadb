@@ -1,0 +1,18 @@
+---
+description: What to update with each code change or version release
+alwaysApply: true
+---
+
+# Change & Release Checklist
+
+## Every code change
+- `CHANGELOG.md` — add entry under `[Unreleased]`
+- `TODO.md` — mark completed items or add new ones
+- Add/update tests for changed behavior
+
+## Version bump (before tagging)
+- `Cargo.toml` — `version`
+- `python/pyproject.toml` — `version`
+- `CHANGELOG.md` — move `[Unreleased]` to new `[x.y.z]` section, update compare links
+- `Dockerfile` — `org.opencontainers.image.version` label
+- Tag: `git tag v0.x.y && git push origin v0.x.y` (triggers crates.io + PyPI + GHCR publish)

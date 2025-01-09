@@ -1,0 +1,39 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "aresadb"
+version = "0.2.1"
+description = "High-performance multi-model database — KV, Graph, SQL, Vector Search, Full-Text Search"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Yevheniy Chuba", email = "yevheniyc@gmail.com" }]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Database :: Database Engines/Servers",
+]
+keywords = ["database", "graph", "vector-search", "full-text-search", "embedded"]
+
+[project.urls]
+Homepage = "https://github.com/yoreai/aresadb"
+Repository = "https://github.com/yoreai/aresadb"
+Issues = "https://github.com/yoreai/aresadb/issues"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "maturin>=1.0"]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+manifest-path = "Cargo.toml"

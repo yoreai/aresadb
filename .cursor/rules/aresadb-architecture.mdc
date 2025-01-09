@@ -1,0 +1,66 @@
+---
+description: AresaDB codebase structure and conventions
+alwaysApply: true
+---
+
+# AresaDB Architecture
+
+## Key paths
+- `src/storage/` — core engine (redb), node types, vector search, S3/GCS, cache
+- `src/storage/tiered.rs` — tiered storage: index/payload split, cloud tiering, eviction
+- `src/storage/local.rs` — redb with tiered tables: `NODE_INDEX_TABLE`, `NODE_PAYLOADS_TABLE`
+- `src/query/` — SQL: parser → planner → executor
+- `src/distributed/` — WAL, bloom, sharding, replication (V2 building blocks)
+- `src/rag/` — chunking, embeddings, hybrid search
+- `src/server/` + `src/client/` — behind `feature = "server"`, fully functional
+- `python/` — PyO3 bindings (maturin build, module: `aresadb_python`)
+
+## Tiered storage architecture
+- `Database` → `TieredStorage` → `LocalStorage` + `CacheLayer` + optional `BucketStorage`
+- `NodeIndex` (type, timestamps, payload_location) always local in redb — sub-ms graph traversal
+- Node payloads (properties) can be local, cached, or cloud (S3/GCS)
+- Read path: cache → local payload → cloud bucket (transparent)
+- Eviction moves cold payloads to cloud; index stays local
+- Auto-migration on `Database::open()` for pre-tiered databases
+
+## Vector search
+- Managed HNSW indexes per `(node_type, embedding_field)` — lazy-built on first search
+- `insert_with_embedding()` maintains HNSW incrementally; `rebuild_vector_index()` for bulk loads
+- `similarity_search()` uses HNSW when available, falls back to brute-force
+- Filtered: `VECTOR SEARCH table FIELD f FOR [...] WHERE col = 'val' LIMIT k`
+
+## Batch APIs
+- `insert_nodes_batch()` / `create_edges_batch()` — single redb transaction per batch
+- ~345x faster than individual inserts (37,720+ nodes/sec)
+
+## Secondary indexes
+- `CREATE INDEX ON table (field)` — B-tree property index in redb
+- `PROPERTY_INDEX` multimap: `"type\0field\0value"` → `[NodeId]`
+- Auto-maintained on insert; back-fills existing data on creation
+- Query planner routes equality predicates through index lookup (O(log n) vs O(n))
+- API: `db.create_index()`, `db.drop_index()`, `db.index_lookup()`, `db.list_indexes()`
+
+## Full-text search
+- `CREATE FULLTEXT INDEX ON table (field)` — inverted index with BM25 scoring
+- `FULLTEXT SEARCH table FIELD field FOR 'query' LIMIT n` — ranked search
+- `FULLTEXT_INDEX` multimap: `"type\0field\0token"` → `[NodeId]`
+- Tokenizer: whitespace split, lowercase, stopword removal, min 2 chars
+- BM25 scoring (k1=1.2, b=0.75) for relevance ranking
+- API: `db.create_fulltext_index()`, `db.fulltext_search()`
+
+## Wire protocol (feature = "server")
+- `RequestHandler` has `QueryEngine` for SQL execution + graph traversal
+- All operations implemented: insert, get, update, delete (node/edge), query, traverse, status
+- 180 tests with server feature enabled
+
+## Conventions
+- `Database` (`src/storage/mod.rs`) is `Clone` (Arc internals)
+- SQL: `QueryEngine::new(db.clone()).execute_sql(sql, limit)`
+- CI uses default features only — `--features server` for full build
+- `cargo check` before committing
+- 330+ tests across unit, integration, and stress
+
+## Known gaps
+- `storage/bucket.rs`: no unit tests for S3/GCS paths
+- Advanced SQL: no subqueries, CTEs, or JOINs yet
+- Distributed mode: replication is structural only, not production-ready

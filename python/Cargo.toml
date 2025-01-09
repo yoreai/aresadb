@@ -1,0 +1,18 @@
+[package]
+name = "aresadb-python"
+version = "0.2.1"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "Python bindings for AresaDB — KV, Graph, SQL, Vector Search, Full-Text Search"
+license = "MIT"
+publish = false
+
+[lib]
+name = "aresadb_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+aresadb = { path = ".." }
+pyo3 = { version = "0.22", features = ["extension-module"] }
+serde_json = "1.0"
+tokio = { version = "1.35", features = ["full"] }

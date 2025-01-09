@@ -1,0 +1,47 @@
+# Rust
+target/
+Cargo.lock
+*.rlib
+*.rmeta
+
+# Benchmarks
+benchmark_results/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyd
+*.so
+*.egg-info/
+dist/
+python/.venv/
+python/target/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+._*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data
+*.parquet
+*.csv.gz
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Demo database (generated)
+demo_db/data/

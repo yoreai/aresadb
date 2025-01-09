@@ -1,0 +1,24 @@
+services:
+  aresadb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aresadb
+    ports:
+      - "6379:6379"
+    volumes:
+      - aresadb_data:/data
+    environment:
+      - ARESADB_DATA_DIR=/data
+      - RUST_LOG=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "aresadb", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  aresadb_data:
+    driver: local

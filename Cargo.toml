@@ -1,0 +1,153 @@
+[package]
+name = "aresadb"
+version = "0.2.1"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "High-performance multi-model database engine — KV, Graph, SQL, Vector Search, and Full-Text Search in one binary"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+homepage = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+keywords = ["database", "graph", "vector-search", "full-text-search", "embedded"]
+categories = ["database", "command-line-utilities"]
+rust-version = "1.85"
+
+[lib]
+name = "aresadb"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aresadb"
+path = "src/main.rs"
+
+[[bin]]
+name = "aresadb-server"
+path = "src/bin/server.rs"
+required-features = ["server"]
+
+[features]
+default = []
+server = ["distributed"]
+distributed = []
+full = ["server", "distributed"]
+
+[dependencies]
+# Core
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+rkyv = { version = "0.7", features = ["validation"] }
+bincode = "1.3"
+
+# Storage
+redb = "2.0"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Cloud storage
+object_store = { version = "0.9", features = ["aws", "gcp"] }
+bytes = "1.5"
+url = "2.5"
+
+# Caching
+moka = { version = "0.12", features = ["sync"] }
+
+# Query engine
+sqlparser = "0.43"
+regex = "1.10"
+petgraph = "0.6"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full", "parking_lot"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+tokio-stream = "0.1"
+futures = "0.3"
+async-trait = "0.1"
+pin-project-lite = "0.2"
+
+# Concurrency
+parking_lot = "0.12"
+crossbeam = "0.8"
+dashmap = "5.5"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+rustyline = "13.0"
+syntect = "5.0"
+tabled = "0.14"
+colored = "2.0"
+indicatif = "0.17"
+humansize = "2.1"
+walkdir = "2.4"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# V2: Distributed features
+lz4_flex = "0.11"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+siphasher = "1.0"
+crc32fast = "1.3"
+rand = "0.8"
+
+# HTTP client (for fetching remote data)
+reqwest = { version = "0.11", features = ["json"] }
+
+[dev-dependencies]
+tempfile = "3.9"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+proptest = "1.4"
+test-case = "3.3"
+tokio-test = "0.4"
+pretty_assertions = "1.4"
+mockall = "0.12"
+fake = { version = "2.9", features = ["derive"] }
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+rstest = "0.18"
+serial_test = "3.0"
+tracing-test = "0.2"
+
+[[bench]]
+name = "storage_bench"
+harness = false
+
+[[bench]]
+name = "query_bench"
+harness = false
+
+[[bench]]
+name = "distributed_bench"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+debug = false
+
+[profile.bench]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+debug = true
+
+[[example]]
+name = "fire_safety_test"
+path = "examples/fire_safety_test.rs"
+
+[[example]]
+name = "tiered_storage_demo"
+path = "examples/tiered_storage_demo.rs"
+
+[[example]]
+name = "benchmark_suite"
+path = "benchmarks/run_benchmarks.rs"

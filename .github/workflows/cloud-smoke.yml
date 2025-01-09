@@ -1,0 +1,96 @@
+name: Real-Cloud Smoke
+
+# Nightly smoke test against real GCS and S3 buckets. Complements the
+# emulator-based `cloud-integration` job in ci.yml — this is the last
+# few percent of confidence that emulators can't cover (OAuth token
+# refresh, IAM, production network paths).
+#
+# Activation: set the repository secrets listed in
+# `docs/cloud-testing-setup.md`. Until those are present, the job
+# skips gracefully instead of failing loudly.
+
+on:
+  schedule:
+    # 07:00 UTC daily (02:00 ET) — adjust as needed
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  gate:
+    name: Check secrets are configured
+    runs-on: ubuntu-latest
+    outputs:
+      gcs_ready: ${{ steps.probe.outputs.gcs_ready }}
+      s3_ready: ${{ steps.probe.outputs.s3_ready }}
+    steps:
+      - id: probe
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ARESADB_REAL_GCS_BUCKET: ${{ secrets.ARESADB_REAL_GCS_BUCKET }}
+          ARESADB_REAL_S3_BUCKET: ${{ secrets.ARESADB_REAL_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          gcs_ready=false
+          s3_ready=false
+          if [ -n "${GCP_SA_KEY:-}" ] && [ -n "${ARESADB_REAL_GCS_BUCKET:-}" ]; then
+            gcs_ready=true
+          fi
+          if [ -n "${AWS_ACCESS_KEY_ID:-}" ] \
+             && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] \
+             && [ -n "${ARESADB_REAL_S3_BUCKET:-}" ]; then
+            s3_ready=true
+          fi
+          echo "gcs_ready=${gcs_ready}" >> "$GITHUB_OUTPUT"
+          echo "s3_ready=${s3_ready}" >> "$GITHUB_OUTPUT"
+          echo "::notice::GCS ready=${gcs_ready}, S3 ready=${s3_ready}"
+          if [ "$gcs_ready" = "false" ] && [ "$s3_ready" = "false" ]; then
+            echo "::warning::No real-cloud secrets configured — see docs/cloud-testing-setup.md"
+          fi
+
+  gcs-smoke:
+    name: Real GCS smoke test
+    needs: gate
+    if: needs.gate.outputs.gcs_ready == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ARESADB_REAL_GCS_BUCKET: ${{ secrets.ARESADB_REAL_GCS_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Write GCP credentials to a temp file
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$GCP_SA_KEY" > "${RUNNER_TEMP}/gcp-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${RUNNER_TEMP}/gcp-sa.json" >> "$GITHUB_ENV"
+
+      - name: Run real-GCS smoke test
+        run: cargo test --test cloud_real smoke_test_real_gcs -- --nocapture
+
+      - name: Scrub credentials
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/gcp-sa.json"
+
+  s3-smoke:
+    name: Real S3 smoke test
+    needs: gate
+    if: needs.gate.outputs.s3_ready == 'true'
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ARESADB_REAL_S3_BUCKET: ${{ secrets.ARESADB_REAL_S3_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run real-S3 smoke test
+        run: cargo test --test cloud_real smoke_test_real_s3 -- --nocapture

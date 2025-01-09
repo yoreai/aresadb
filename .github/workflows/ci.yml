@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt -- --check
+      - run: cargo clippy -- -D warnings
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  cloud-integration:
+    name: Cloud Integration (MinIO + fake-gcs-server)
+    runs-on: ubuntu-latest
+    env:
+      AWS_ENDPOINT_URL: http://localhost:9000
+      AWS_ACCESS_KEY_ID: aresadb-test
+      AWS_SECRET_ACCESS_KEY: aresadb-test-secret
+      AWS_REGION: us-east-1
+      STORAGE_EMULATOR_HOST: http://localhost:4443
+      ARESADB_TEST_S3_BUCKET: aresadb-tests
+      ARESADB_TEST_GCS_BUCKET: aresadb-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Start cloud emulators
+        run: ./scripts/start_emulators.sh
+
+      - name: Run cloud integration tests
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cargo test \
+            --test cloud_gcs \
+            --test cloud_s3 \
+            --test cloud_tiered \
+            -- --nocapture
+
+      - name: Dump emulator logs on failure
+        if: failure()
+        run: |
+          echo "===== fake-gcs-server logs ====="
+          docker compose -f docker-compose.test.yml logs fake-gcs | tail -200 || true
+          echo "===== minio logs ====="
+          docker compose -f docker-compose.test.yml logs minio | tail -200 || true
+
+      - name: Stop cloud emulators
+        if: always()
+        run: ./scripts/stop_emulators.sh
