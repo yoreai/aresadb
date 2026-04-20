@@ -1,8 +1,23 @@
-//! Distributed System Benchmarks
+//! Distributed System Benchmarks — v0.2-era scope.
 //!
-//! Criterion benchmarks for sharding, compression, bloom filters, and WAL.
+//! Criterion benchmarks for the three data-path primitives that live in
+//! the root crate's `aresadb::distributed` module — `BloomFilter`,
+//! `Compressor`, and `ShardManager`. These are **not** on the v2
+//! distributed data path: the v2 cluster is multi-Raft, range-sharded,
+//! and replicated through `aresadb-raft` + `aresadb-net` + `aresadb-pd`,
+//! none of which this file touches.
+//!
+//! The bench stays green in CI (it pins the utility-library surface) but
+//! the numbers here do **not** reflect v2 cluster throughput or latency.
+//! For those, see [`benches/v2_cluster_bench.rs`](./v2_cluster_bench.rs)
+//! (Raft apply + redb vs fjall today; additional tracks tracked in
+//! `docs/publishing-audit.md` §4a).
+//!
+//! The `bench_wal` group was removed when the Phase 1 closeout
+//! deleted the v1 `src/distributed/wal.rs` stub — `aresadb-raft` is
+//! the real Raft log in v2 and ships its own tests + benches.
 
-use aresadb::distributed::{BloomFilter, Compressor, ShardManager, WalEntryType, WriteAheadLog};
+use aresadb::distributed::{BloomFilter, Compressor, ShardManager};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use tempfile::TempDir;
 use tokio::runtime::Runtime;
@@ -113,54 +128,6 @@ fn bench_compression(c: &mut Criterion) {
 }
 
 // ============================================================================
-// WAL Benchmarks
-// ============================================================================
-
-fn bench_wal(c: &mut Criterion) {
-    let mut group = c.benchmark_group("distributed/wal");
-
-    // Write throughput
-    for entry_size in [100, 1_000, 10_000].iter() {
-        let data: Vec<u8> = vec![42u8; *entry_size];
-
-        group.throughput(Throughput::Bytes(*entry_size as u64));
-        group.bench_with_input(BenchmarkId::new("append", entry_size), &data, |b, d| {
-            let temp = TempDir::new().unwrap();
-            let wal = WriteAheadLog::open(temp.path().join("bench.wal")).unwrap();
-
-            b.iter(|| wal.append(WalEntryType::InsertNode, d.clone()).unwrap())
-        });
-    }
-
-    // Flush latency
-    let temp = TempDir::new().unwrap();
-    let wal = WriteAheadLog::open(temp.path().join("flush.wal")).unwrap();
-    for _ in 0..100 {
-        wal.append(WalEntryType::InsertNode, vec![1, 2, 3]).unwrap();
-    }
-
-    group.bench_function("flush", |b| b.iter(|| wal.flush().unwrap()));
-
-    // Read throughput
-    let temp = TempDir::new().unwrap();
-    {
-        let wal = WriteAheadLog::open(temp.path().join("read.wal")).unwrap();
-        for _ in 0..1000 {
-            wal.append(WalEntryType::InsertNode, vec![0u8; 100])
-                .unwrap();
-        }
-        wal.flush().unwrap();
-    }
-
-    let wal = WriteAheadLog::open(temp.path().join("read.wal")).unwrap();
-    group.bench_function("read_all", |b| {
-        b.iter(|| black_box(wal.read_all().unwrap()))
-    });
-
-    group.finish();
-}
-
-// ============================================================================
 // Sharding Benchmarks
 // ============================================================================
 
@@ -229,13 +196,11 @@ fn bench_sharding(c: &mut Criterion) {
 fn bench_distributed_pipeline(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed/pipeline");
 
-    // Full write path: compress + WAL + shard
+    // Full write path: compress + shard (WAL path belongs to
+    // `aresadb-raft` now).
     let compressor = Compressor::new();
 
     group.bench_function("write_pipeline", |b| {
-        let temp = TempDir::new().unwrap();
-        let wal = WriteAheadLog::open(temp.path().join("pipeline.wal")).unwrap();
-
         let data = serde_json::to_vec(&serde_json::json!({
             "id": "12345",
             "type": "user",
@@ -244,16 +209,9 @@ fn bench_distributed_pipeline(c: &mut Criterion) {
         .unwrap();
 
         b.iter(|| {
-            // 1. Compress
             let compressed = compressor.compress(&data).unwrap();
-
-            // 2. Determine shard
             let shard = ShardManager::shard_for_key(b"12345", 8);
-
-            // 3. Write to WAL
-            wal.append(WalEntryType::InsertNode, compressed).unwrap();
-
-            black_box(shard)
+            black_box((shard, compressed))
         })
     });
 
@@ -271,15 +229,10 @@ fn bench_distributed_pipeline(c: &mut Criterion) {
         b.iter(|| {
             let key = format!("key_{}", i % 10_000);
 
-            // 1. Bloom filter check
             if bloom.may_contain(key.as_bytes()) {
-                // 2. Determine shard
                 let shard = ShardManager::shard_for_key(key.as_bytes(), 8);
-
-                // 3. Decompress (simulate fetch result)
                 let data = compressor.decompress(&compressed).unwrap();
-
-                black_box((shard, data))
+                let _ = black_box((shard, data));
             }
 
             i = i.wrapping_add(1);
@@ -293,7 +246,6 @@ criterion_group!(
     benches,
     bench_bloom_filter,
     bench_compression,
-    bench_wal,
     bench_sharding,
     bench_distributed_pipeline,
 );

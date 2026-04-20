@@ -1,0 +1,69 @@
+name: Docker smoke
+
+# Exercises the 3-node docker-compose cluster end-to-end:
+#
+#   1. Build the Dockerfile locally.
+#   2. Bring up the compose stack (node-1 bootstraps, 2 + 3 join).
+#   3. Run bootstrap.sh to promote 2 + 3 to voters and write/read through the
+#      default range.
+#   4. Run multi-range.sh to open range 42 on node-1, write/read through the
+#      range-aware admin surface, and verify cross-process range isolation.
+#   5. Tear the stack down and wipe volumes.
+#
+# Runs on a nightly schedule + on every push to main that touches the
+# cluster crate or the docker/ tree. Not wired into PR gating because the
+# cold build is ~3-5 minutes on GHA runners; PRs get the cheaper per-
+# component tests from ci.yml instead.
+
+on:
+  schedule:
+    # 07:00 UTC every day — after nightly storage compactions, before most
+    # timezones start their working day so a regression gets noticed same-day.
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "crates/aresadb-cluster/**"
+      - "crates/aresadb-net/**"
+      - "crates/aresadb-pd/**"
+      - "crates/aresadb-engine-redb/**"
+      - "crates/aresadb-engine-lsm/**"
+      - "docker/cluster/**"
+      - ".github/workflows/docker-smoke.yml"
+
+jobs:
+  smoke:
+    name: 3-node docker smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Docker version
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Build and start cluster
+        run: docker compose -f docker/cluster/docker-compose.yml up -d --build
+
+      - name: Bootstrap (add voters + default-range smoke)
+        run: bash docker/cluster/bootstrap.sh
+
+      - name: Multi-range smoke (open range 42 + isolation checks)
+        run: bash docker/cluster/multi-range.sh
+
+      - name: Dump cluster status on failure
+        if: failure()
+        run: |
+          echo "===== node-1 logs ====="
+          docker compose -f docker/cluster/docker-compose.yml logs --tail 200 aresadb-node-1 || true
+          echo "===== node-2 logs ====="
+          docker compose -f docker/cluster/docker-compose.yml logs --tail 200 aresadb-node-2 || true
+          echo "===== node-3 logs ====="
+          docker compose -f docker/cluster/docker-compose.yml logs --tail 200 aresadb-node-3 || true
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f docker/cluster/docker-compose.yml down -v

@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "timestamp": "2026-04-20T11:14:58.124144+00:00",
+    "os": "macos",
+    "arch": "aarch64",
+    "node_count": 50000,
+    "edge_count": 250000,
+    "vector_count": 10000,
+    "vector_dim": 128
+  },
+  "insert": {
+    "individual_rate_per_sec": 307.23583795444836,
+    "batch_rate_per_sec": 74600.22203532646,
+    "edge_batch_rate_per_sec": 51546.98604149928,
+    "batch_speedup": 242.8109381119363
+  },
+  "point_lookup": {
+    "count": 10000,
+    "total_us": 53617.0,
+    "mean_us": 5.3617,
+    "p50_us": 5.0,
+    "p99_us": 13.0
+  },
+  "index_lookup": {
+    "count": 10000,
+    "total_us": 1200.0,
+    "mean_us": 0.12,
+    "p50_us": 0.0,
+    "p99_us": 1.0
+  },
+  "graph_traversal": {
+    "depth1_nodes": 6,
+    "depth1_edges": 5,
+    "depth1_us": 29.0,
+    "depth2_nodes": 20,
+    "depth2_edges": 30,
+    "depth2_us": 99.5,
+    "depth3_nodes": 47,
+    "depth3_edges": 100,
+    "depth3_us": 264.5
+  },
+  "sql_query": {
+    "select_limit_10_us": 55573.5,
+    "filter_scan_us": 55797.0,
+    "order_by_us": 60366.0
+  },
+  "secondary_index": {
+    "build_time_ms": 66.0,
+    "entries_indexed": 12500,
+    "unindexed_query_us": 55732.5,
+    "indexed_query_us": 2240.5,
+    "speedup": 24.875027895559025
+  },
+  "fulltext_search": {
+    "build_time_ms": 295.0,
+    "docs_indexed": 12500,
+    "search_us": 31961.0,
+    "results_count": 10
+  },
+  "vector_search": {
+    "count": 10000,
+    "dim": 128,
+    "build_time_ms": 156.0,
+    "brute_force_us": 678.0,
+    "hnsw_us": 6.0,
+    "speedup": 113.0,
+    "filtered_us": 66423.0
+  }
+}
