@@ -1,8 +1,24 @@
 name: Release
 
+# Tag pushes run the full release fan-out (crates.io, PyPI, Docker).
+# `workflow_dispatch` is a manual escape hatch for re-running the
+# Docker image publish against a specific version — used when the
+# tag-triggered run couldn't complete the Docker leg and we don't
+# want to re-publish to crates.io / PyPI.
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to tag the Docker image as (without leading v)"
+        required: true
+        type: string
+      docker_only:
+        description: "Only run the Docker publish job (skip crates.io + PyPI)"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -15,6 +31,7 @@ jobs:
   # ── Crates.io ──────────────────────────────────────────────────
   publish-crate:
     name: Publish to crates.io
+    if: github.event_name == 'push' || github.event.inputs.docker_only == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +43,7 @@ jobs:
   # ── PyPI wheels (Linux via manylinux container) ────────────────
   build-wheels-linux:
     name: Build wheels (linux-${{ matrix.target }})
+    if: github.event_name == 'push' || github.event.inputs.docker_only == 'false'
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -53,6 +71,7 @@ jobs:
   # ── PyPI wheels (macOS) ────────────────────────────────────────
   build-wheels-macos:
     name: Build wheels (macos-${{ matrix.target }})
+    if: github.event_name == 'push' || github.event.inputs.docker_only == 'false'
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -89,6 +108,7 @@ jobs:
   # ── Source distribution ────────────────────────────────────────
   build-sdist:
     name: Build source distribution
+    if: github.event_name == 'push' || github.event.inputs.docker_only == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -107,6 +127,7 @@ jobs:
   # ── Publish to PyPI ────────────────────────────────────────────
   publish-pypi:
     name: Publish to PyPI
+    if: github.event_name == 'push' || github.event.inputs.docker_only == 'false'
     needs: [build-wheels-linux, build-wheels-macos, build-sdist]
     runs-on: ubuntu-latest
     environment:
@@ -138,16 +159,24 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version from tag
+      - name: Resolve version
         id: meta
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          # On tag push, derive from the ref. On workflow_dispatch,
+          # use the explicit `version` input (no leading `v`).
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: docker/cluster/Dockerfile
           push: true
           tags: |
-            ghcr.io/yoreai/aresadb:${{ steps.meta.outputs.version }}
-            ghcr.io/yoreai/aresadb:latest
+            ghcr.io/yoreai/aresadb/cluster:${{ steps.meta.outputs.version }}
+            ghcr.io/yoreai/aresadb/cluster:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64

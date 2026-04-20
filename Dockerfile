@@ -1,4 +1,10 @@
-# Multi-stage build for minimal image size
+# Multi-stage build for the legacy v1 `aresadb` single-process CLI.
+#
+# This is the standalone embedded-engine image that predates the v2
+# distributed cluster. For the v2 multi-Raft cluster image see
+# `docker/cluster/Dockerfile`. The workflow-level release publishes
+# the cluster image; this Dockerfile is kept for local dev and
+# back-compat `docker build .` flows.
 
 # === Build ===
 FROM rust:slim-bookworm AS builder
@@ -11,19 +17,34 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Workspace manifest + every member's manifest first (dependency cache).
-COPY Cargo.toml ./
-COPY crates/aresadb-core/Cargo.toml crates/aresadb-core/Cargo.toml
-COPY crates/aresadb-sim/Cargo.toml crates/aresadb-sim/Cargo.toml
+# Keep this list in lockstep with `aresadb/Cargo.toml` `[workspace] members`.
+COPY Cargo.toml Cargo.lock ./
+COPY crates/aresadb-core/Cargo.toml        crates/aresadb-core/Cargo.toml
+COPY crates/aresadb-raft/Cargo.toml        crates/aresadb-raft/Cargo.toml
+COPY crates/aresadb-net/Cargo.toml         crates/aresadb-net/Cargo.toml
+COPY crates/aresadb-engine-redb/Cargo.toml crates/aresadb-engine-redb/Cargo.toml
+COPY crates/aresadb-engine-lsm/Cargo.toml  crates/aresadb-engine-lsm/Cargo.toml
+COPY crates/aresadb-cluster/Cargo.toml     crates/aresadb-cluster/Cargo.toml
+COPY crates/aresadb-pd/Cargo.toml          crates/aresadb-pd/Cargo.toml
+COPY crates/aresadb-sim/Cargo.toml         crates/aresadb-sim/Cargo.toml
 
 # Dummy srcs for each member so `cargo build` resolves/builds deps.
-RUN mkdir -p src crates/aresadb-core/src crates/aresadb-sim/src && \
-    echo "fn main() {}" > src/main.rs && \
-    echo "pub fn lib() {}" > src/lib.rs && \
-    echo "pub fn lib() {}" > crates/aresadb-core/src/lib.rs && \
-    echo "pub fn lib() {}" > crates/aresadb-sim/src/lib.rs && \
-    cargo build --release --bin aresadb 2>/dev/null || true && \
-    rm -rf src crates/aresadb-core/src crates/aresadb-sim/src \
-           target/release/deps/aresadb*
+RUN set -eux; \
+    mkdir -p src \
+             crates/aresadb-core/src crates/aresadb-raft/src \
+             crates/aresadb-net/src crates/aresadb-engine-redb/src \
+             crates/aresadb-engine-lsm/src \
+             crates/aresadb-cluster/src crates/aresadb-cluster/src/bin \
+             crates/aresadb-pd/src \
+             crates/aresadb-sim/src; \
+    echo "fn main() {}"    > src/main.rs; \
+    echo "pub fn lib() {}" > src/lib.rs; \
+    for c in aresadb-core aresadb-raft aresadb-net aresadb-engine-redb \
+             aresadb-engine-lsm aresadb-cluster aresadb-pd aresadb-sim; do \
+        echo "pub fn lib() {}" > "crates/${c}/src/lib.rs"; \
+    done; \
+    echo "fn main() {}" > crates/aresadb-cluster/src/bin/cli.rs; \
+    cargo fetch --locked
 
 COPY src ./src
 COPY crates ./crates
@@ -31,7 +52,7 @@ COPY tests ./tests
 COPY benches ./benches
 COPY examples ./examples
 
-RUN cargo build --release --bin aresadb
+RUN cargo build --release --locked --bin aresadb
 
 # === Runtime ===
 FROM debian:bookworm-slim
