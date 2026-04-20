@@ -26,23 +26,28 @@ WORKDIR /src
 # before the real source lands. Every workspace member's Cargo.toml has
 # to be present; the source trees are stubbed until the final COPY.
 COPY Cargo.toml Cargo.lock ./
-COPY crates/aresadb-core/Cargo.toml       crates/aresadb-core/Cargo.toml
-COPY crates/aresadb-raft/Cargo.toml       crates/aresadb-raft/Cargo.toml
-COPY crates/aresadb-net/Cargo.toml        crates/aresadb-net/Cargo.toml
+COPY crates/aresadb-core/Cargo.toml        crates/aresadb-core/Cargo.toml
+COPY crates/aresadb-raft/Cargo.toml        crates/aresadb-raft/Cargo.toml
+COPY crates/aresadb-net/Cargo.toml         crates/aresadb-net/Cargo.toml
 COPY crates/aresadb-engine-redb/Cargo.toml crates/aresadb-engine-redb/Cargo.toml
-COPY crates/aresadb-cluster/Cargo.toml    crates/aresadb-cluster/Cargo.toml
-COPY crates/aresadb-sim/Cargo.toml        crates/aresadb-sim/Cargo.toml
+COPY crates/aresadb-engine-lsm/Cargo.toml  crates/aresadb-engine-lsm/Cargo.toml
+COPY crates/aresadb-cluster/Cargo.toml     crates/aresadb-cluster/Cargo.toml
+COPY crates/aresadb-pd/Cargo.toml          crates/aresadb-pd/Cargo.toml
+COPY crates/aresadb-sim/Cargo.toml         crates/aresadb-sim/Cargo.toml
 
 # Stubs so `cargo fetch` and the warmup build see valid crates.
 RUN set -eux; \
     mkdir -p src \
              crates/aresadb-core/src crates/aresadb-raft/src \
              crates/aresadb-net/src crates/aresadb-engine-redb/src \
+             crates/aresadb-engine-lsm/src \
              crates/aresadb-cluster/src crates/aresadb-cluster/src/bin \
+             crates/aresadb-pd/src \
              crates/aresadb-sim/src; \
     echo 'fn main() {}'      > src/main.rs; \
     echo 'pub fn lib() {}'   > src/lib.rs; \
-    for c in aresadb-core aresadb-raft aresadb-net aresadb-engine-redb aresadb-cluster aresadb-sim; do \
+    for c in aresadb-core aresadb-raft aresadb-net aresadb-engine-redb \
+             aresadb-engine-lsm aresadb-cluster aresadb-pd aresadb-sim; do \
         echo 'pub fn lib() {}' > "crates/${c}/src/lib.rs"; \
     done; \
     echo 'fn main() {}' > crates/aresadb-cluster/src/bin/cli.rs
