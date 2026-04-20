@@ -9,9 +9,9 @@
 //!    liveness timer stays fresh for this node.
 //! 2. **Reconcile task** — an independent timer loop that calls
 //!    `list_ranges` on PD, runs
-//!    [`plan_reconcile`](super::reconciler::plan_reconcile) against
-//!    the local [`RangeDirectory`], and applies the result via
-//!    [`execute_plan`](super::executor::execute_plan).
+//!    [`super::reconciler::plan_reconcile`] against the local
+//!    `RangeDirectory`, and applies the result via
+//!    [`super::executor::execute_plan`].
 //!
 //! Both tasks share one [`tokio::sync::watch::Sender<bool>`] — the
 //! shutdown signal. [`PdSupervisorHandle::stop`] flips it to

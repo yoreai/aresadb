@@ -14,8 +14,9 @@
 //! The catalog rows (`/m/pd/r/*` and `/m/pd/n/*`) already live on the
 //! state-machine's data backend. Raft-specific metadata —
 //! `last_applied` log id and `last_membership` — rides along at the
-//! reserved [`PD_RAFT_META_KEY`] row. Each apply bundles the catalog
-//! mutation and the fresh meta into one [`aresadb_core::WriteBatch`]
+//! reserved [`crate::state_machine::PD_RAFT_META_KEY`] row. Each apply
+//! bundles the catalog mutation and the fresh meta into one
+//! [`aresadb_core::WriteBatch`]
 //! via [`PdStateMachine::apply_with_meta`], so the two never drift
 //! out of sync: either both land or neither does.
 //!
@@ -44,8 +45,8 @@
 //! The catalog's `apply` returns a [`crate::CatalogError`] whenever a
 //! command is invalid — overlapping ranges, epoch regression,
 //! split-key outside span, etc. That's an **application-level**
-//! rejection, not an I/O failure, so we surface it through
-//! [`PdResponse::Error(msg)`] and let Raft commit the entry. This
+//! rejection, not an I/O failure, so we surface it through the
+//! [`PdResponse::Error`] variant and let Raft commit the entry. This
 //! keeps every replica's log semantics identical: the same log index
 //! produces the same response everywhere, including the rejection.
 //!
@@ -78,9 +79,9 @@ use super::config::{NodeId, PdTypeConfig};
 
 /// Persisted `{ last_applied, last_membership }` row.
 ///
-/// Stored bincode-encoded at [`PD_RAFT_META_KEY`]. Public so
-/// integration tests and the admin surface can decode the row for
-/// inspection.
+/// Stored bincode-encoded at [`crate::state_machine::PD_RAFT_META_KEY`].
+/// Public so integration tests and the admin surface can decode the row
+/// for inspection.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PersistedPdMeta {
     /// Last Raft log id whose apply landed on disk. `None` means
@@ -231,8 +232,9 @@ impl PdRaftStateMachine {
     }
 
     /// Return a copy of the in-memory Raft meta. Primarily useful
-    /// for tests — in production code prefer [`Self::applied_state`]
-    /// which goes through the trait surface.
+    /// for tests — in production code prefer
+    /// [`RaftStateMachine::applied_state`], which goes through the
+    /// trait surface.
     pub async fn meta_snapshot(&self) -> PersistedPdMeta {
         self.meta.read().await.clone()
     }

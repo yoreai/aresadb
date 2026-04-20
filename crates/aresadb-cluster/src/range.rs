@@ -407,16 +407,16 @@ impl RangeRuntime {
     ///
     /// # Errors
     ///
-    /// * [`ReadError::NotLeader`] — this node is not the leader.
-    ///   The `Option<NodeId>` is the leader hint openraft attached
-    ///   to the forward-to-leader error. Usually present, but may
-    ///   be `None` during an election.
-    /// * [`ReadError::QuorumUnavailable`] — the leader couldn't
-    ///   reach a quorum during the heartbeat probe (minority
+    /// * [`crate::error::ReadError::NotLeader`] — this node is not
+    ///   the leader. The `Option<NodeId>` is the leader hint openraft
+    ///   attached to the forward-to-leader error. Usually present,
+    ///   but may be `None` during an election.
+    /// * [`crate::error::ReadError::QuorumUnavailable`] — the leader
+    ///   couldn't reach a quorum during the heartbeat probe (minority
     ///   partition, slow peers). Transient; retry.
-    /// * [`ReadError::Fatal`] — openraft reported a fatal state
-    ///   (shutdown, corruption). The range is unusable without
-    ///   operator intervention.
+    /// * [`crate::error::ReadError::Fatal`] — openraft reported a
+    ///   fatal state (shutdown, corruption). The range is unusable
+    ///   without operator intervention.
     pub async fn ensure_linearizable(&self) -> ReadResult<()> {
         self.raft.ensure_linearizable().await?;
         Ok(())
@@ -432,7 +432,7 @@ impl RangeRuntime {
     ///
     /// Returns `Ok(Some(value))` if the key exists at the
     /// linearization point, `Ok(None)` if it doesn't. Every other
-    /// outcome maps to a [`ReadError`] variant — see
+    /// outcome maps to a [`crate::error::ReadError`] variant — see
     /// [`Self::ensure_linearizable`] for the taxonomy.
     pub async fn linearizable_get(&self, key: &[u8]) -> ReadResult<Option<Vec<u8>>> {
         self.ensure_linearizable().await?;

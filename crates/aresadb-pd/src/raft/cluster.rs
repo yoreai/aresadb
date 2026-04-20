@@ -14,8 +14,9 @@
 //!   `PdCommand`s, then verify every follower's [`PdStateMachine`]
 //!   converges to the same range / node table.
 //! - **Snapshot + install_snapshot** — generate enough log entries
-//!   that a lagging follower catches up via
-//!   [`RaftStateMachine::install_snapshot`] rather than log replay.
+//!   that a lagging follower catches up via openraft's
+//!   `RaftStateMachine::install_snapshot` path rather than log
+//!   replay.
 //! - **Process restart** — shut a member down, drop and re-open its
 //!   Raft handle against the same backends, watch it rejoin.
 //!

@@ -307,16 +307,18 @@ impl Scenario for RaftApplyDeterminism {
 ///
 /// By construction this scenario is still synchronous — each range
 /// drains its own queue before the next op runs — which is enough
-/// to catch apply-path bugs; we lean on
-/// [`MultiRangeApplyDeterminism::run_on_new_nodes`] interleaving
-/// via `futures::future::join_all` to expose any Tokio-level
-/// scheduling hazards. Full network-partition / leader-change
-/// testing waits on the madsim multi-node harness in Phase 3.
+/// to catch apply-path bugs; we lean on the scenario's
+/// `run_on_new_nodes` helper — which interleaves per-range
+/// `SingleNode` apply schedules via `futures::future::join_all` — to
+/// expose any Tokio-level scheduling hazards. Full network-partition
+/// / leader-change testing waits on the madsim multi-node harness in
+/// Phase 3.
 pub struct MultiRangeApplyDeterminism {
-    /// Ordered command script. Each op is routed to a range by
-    /// [`MultiRangeApplyDeterminism::route`]; ops whose key doesn't
-    /// match any configured prefix fail the scenario — we want a
-    /// misrouted op to be loud, not silently dropped.
+    /// Ordered command script. Each op is routed to a range by the
+    /// scenario's internal longest-prefix-match router against
+    /// `prefixes` below; ops whose key doesn't match any configured
+    /// prefix fail the scenario — we want a misrouted op to be loud,
+    /// not silently dropped.
     pub script: Vec<RaftOp>,
 
     /// Prefix → range-id map. Order doesn't matter for correctness

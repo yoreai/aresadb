@@ -2,10 +2,12 @@
 target/
 *.rlib
 *.rmeta
-# Cargo.lock is intentionally checked in — this workspace ships a binary
-# (`aresadb-cluster`) and a Docker image that both need reproducible
-# builds. Downstream library consumers still get semver-compatible
-# resolution via `cargo update` on their side.
+# Cargo.lock is intentionally checked in (both the workspace root
+# and `python/Cargo.lock`) — this workspace ships a binary
+# (`aresadb-cluster`), a Docker image, and a PyO3 wheel
+# (`aresadb-python`) that all need reproducible builds. Downstream
+# library consumers still get semver-compatible resolution via
+# `cargo update` on their side.
 
 # Benchmarks
 benchmark_results/

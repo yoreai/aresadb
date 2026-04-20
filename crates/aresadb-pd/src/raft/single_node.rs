@@ -1,7 +1,7 @@
 //! Single-member placement-driver Raft cluster.
 //!
 //! Mirrors [`aresadb_raft::SingleNode`] but for the PD Raft group:
-//! bundles a [`PdLogStore`], a [`PdRaftStateMachine`], and a
+//! bundles a [`super::PdLogStore`], a [`PdRaftStateMachine`], and a
 //! [`PdRouterNetwork`] (with the node registered in its own router)
 //! into a running [`openraft::Raft<PdTypeConfig>`] handle already
 //! initialized as a one-voter cluster.

@@ -8,7 +8,7 @@
 //!    refreshed with this node's liveness timestamp.
 //! 2. A **reconciliation** task that, at a fixed cadence, asks PD
 //!    for the current catalog, diffs it against the local
-//!    [`RangeDirectory`], and converges — calling the in-process
+//!    `RangeDirectory`, and converges — calling the in-process
 //!    equivalent of `AddRange` for every range assigned to this
 //!    node that isn't already open, and `RemoveRange` for every
 //!    locally-open range that PD no longer assigns to us.
@@ -19,7 +19,7 @@
 //! every node and isn't in the PD catalog. Ranges created by PD are
 //! guaranteed to have `range_id >= 2` and live on a disjoint set of
 //! backends; spans may overlap at the keyspace level but the
-//! supervisor only cares about which [`RangeRuntime`]s to open and
+//! supervisor only cares about which `RangeRuntime` to open and
 //! close.
 //!
 //! This module is organised into three layers:
@@ -28,7 +28,7 @@
 //!   local directory view into a [`ReconcilePlan`]. Fully unit
 //!   tested; knows nothing about I/O.
 //! * [`executor`] — applies a [`ReconcilePlan`] against a real
-//!   [`RangeDirectory`] by opening new [`RangeRuntime`]s and
+//!   `RangeDirectory` by opening new `RangeRuntime` values and
 //!   shutting down stale ones.
 //! * [`supervisor`] — the long-running task that drives the above
 //!   two on a timer and handles PD connectivity.

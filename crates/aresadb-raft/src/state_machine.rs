@@ -120,9 +120,10 @@ pub struct StateMachineStore {
 impl StateMachineStore {
     /// Create a new state machine bound to `data`.
     ///
-    /// On construction we read the persisted metadata row
-    /// ([`SM_META_KEY`]) from the data backend so recovery after a
-    /// restart resumes from exactly where we left off.
+    /// On construction we read the persisted metadata row (the
+    /// crate-private `SM_META_KEY` byte key) from the data backend so
+    /// recovery after a restart resumes from exactly where we left
+    /// off.
     pub fn new(data: Arc<dyn StorageBackend>) -> Arc<Self> {
         Arc::new(Self::new_sync(data))
     }
