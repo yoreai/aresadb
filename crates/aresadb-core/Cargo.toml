@@ -1,0 +1,31 @@
+[package]
+name = "aresadb-core"
+version = "2.0.0-alpha.2"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "Core types and storage-engine traits for AresaDB v2 distributed architecture"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+homepage = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+keywords = ["database", "storage", "distributed", "embedded"]
+categories = ["database"]
+rust-version = "1.85"
+publish = false
+
+[lib]
+name = "aresadb_core"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+bytes = "1.5"
+futures = "0.3"
+parking_lot = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { version = "1.35", features = ["full"] }
+tempfile = "3.9"

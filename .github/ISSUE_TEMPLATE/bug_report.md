@@ -28,7 +28,7 @@ Paste any error messages here
 
 ## Environment
 - **OS**: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
-- **AresaDB Version**: [e.g., 0.1.0]
+- **AresaDB Version**: [e.g., 0.2.1]
 - **Rust Version**: [e.g., 1.75.0]
 - **Installation Method**: [e.g., cargo build, binary download]
 

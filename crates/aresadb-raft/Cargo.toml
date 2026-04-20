@@ -1,0 +1,38 @@
+[package]
+name = "aresadb-raft"
+version = "2.0.0-alpha.2"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "Raft integration (openraft-based) for AresaDB v2 — log store, state machine, and snapshot adapters over StorageBackend"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+homepage = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+keywords = ["database", "raft", "consensus", "distributed", "openraft"]
+categories = ["database", "asynchronous"]
+rust-version = "1.85"
+publish = false
+
+[lib]
+name = "aresadb_raft"
+path = "src/lib.rs"
+
+[dependencies]
+aresadb-core = { path = "../aresadb-core" }
+
+anyhow.workspace = true
+async-trait.workspace = true
+bincode.workspace = true
+bytes.workspace = true
+futures.workspace = true
+openraft.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3.9"
+tokio = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

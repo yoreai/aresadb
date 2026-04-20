@@ -1,0 +1,232 @@
+// SPDX-License-Identifier: MIT
+//
+// AresaDB cluster admin protocol.
+//
+// This service is intended to be called by humans (via the
+// `aresadb-cluster` CLI) and by client libraries. It is kept
+// deliberately separate from the peer-to-peer Raft service defined
+// in `aresadb-net/proto/raft.proto` so that each can evolve on its
+// own schedule without breaking the other.
+
+syntax = "proto3";
+
+package aresadb.cluster.v1;
+
+service ClusterAdmin {
+  // Bootstrap a brand-new single-voter cluster on the node receiving
+  // this RPC. Must only be called on a node whose Raft instance has
+  // not been initialised yet. Typically issued exactly once, on the
+  // first node of a new cluster, by the operator.
+  rpc Initialize(InitializeRequest) returns (InitializeResponse);
+
+  // Add a learner (non-voting replica). Must be called on the
+  // current leader. In Phase 1c the learner is promoted to voter
+  // via a subsequent `ChangeMembership`.
+  rpc AddLearner(AddLearnerRequest) returns (AddLearnerResponse);
+
+  // Reconfigure the voter set. Must be called on the current leader.
+  rpc ChangeMembership(ChangeMembershipRequest) returns (ChangeMembershipResponse);
+
+  // Apply a write batch through Raft. Must be called on the current
+  // leader. Returns the committed log index and how many ops the
+  // state machine applied. In Phase 1c the batch is serialised with
+  // bincode matching `aresadb_raft::SerializableWriteBatch` — Phase 2
+  // will replace this with a typed protobuf schema when we pin down
+  // the client-facing wire format.
+  rpc Write(WriteRequest) returns (WriteResponse);
+
+  // Fetch a single key from the state machine. Served from the local
+  // backend; caller must know whether linearizable semantics are
+  // required and route accordingly.
+  rpc Read(ReadRequest) returns (ReadResponse);
+
+  // Dump cluster metrics in JSON form. Returned as opaque bytes so
+  // we don't pin the protobuf schema to every field openraft ships.
+  rpc Status(StatusRequest) returns (StatusResponse);
+
+  // --- Phase 2c-3c: range-aware admin RPCs ---
+
+  // Open a new range on this node. Creates per-range backends at
+  // `<data-dir>/ranges/<range_id>/{log,data}/` and registers the new
+  // `RangeRuntime` in the `RangeDirectory`. If `bootstrap_as_voter`
+  // is true and the range is freshly created, this node initialises
+  // itself as a single-voter Raft group — otherwise it waits to be
+  // added as a voter/learner by an existing leader.
+  //
+  // Idempotent: calling AddRange for an already-registered range
+  // returns `ALREADY_EXISTS` so the caller can distinguish
+  // "created now" from "was already open".
+  rpc AddRange(AddRangeRequest) returns (AddRangeResponse);
+
+  // Stop serving a range on this node and close its backends.
+  // `force` tears the runtime down even if it still has outstanding
+  // references (e.g. an in-flight RPC holding an `Arc<RangeRuntime>`).
+  // On-disk state is retained so the range can be re-opened later.
+  rpc RemoveRange(RemoveRangeRequest) returns (RemoveRangeResponse);
+
+  // Return a snapshot of every range this node is currently serving.
+  // Serves the data-plane operator view — for catalog-level truth,
+  // hit the Placement Driver admin API instead.
+  rpc ListRanges(ListRangesRequest) returns (ListRangesResponse);
+}
+
+message NodeDescriptor {
+  uint64 node_id    = 1;
+  string rpc_addr   = 2;
+}
+
+message InitializeRequest {
+  repeated NodeDescriptor members = 1;
+}
+message InitializeResponse {}
+
+message AddLearnerRequest {
+  NodeDescriptor node = 1;
+  bool blocking       = 2;
+}
+message AddLearnerResponse {}
+
+message ChangeMembershipRequest {
+  repeated uint64 voter_ids = 1;
+  bool retain_learners      = 2;
+}
+message ChangeMembershipResponse {}
+
+message WriteRequest {
+  // bincode-encoded `aresadb_raft::SerializableWriteBatch`.
+  bytes batch = 1;
+  // Target range. `0` (or unset) means "the default range"
+  // (`DEFAULT_RANGE_ID = 1`), which preserves the Phase 1c back-
+  // compat behaviour of the `Write` RPC. Non-zero values route
+  // the batch through the range's own Raft group; the call must
+  // be made against that range's leader (mirrors the PD's
+  // ForwardToLeader semantics — operators point the CLI at any
+  // member, and `FAILED_PRECONDITION` is returned with an
+  // `x-aresa-leader-id` hint when the node isn't the leader).
+  //
+  // Added in Phase 2c-6 for operator-driven multi-range smoke
+  // testing; the Phase 2c-4 pd_supervisor converges ranges
+  // automatically via `RangeDirectory::insert`, so it does not
+  // need this field.
+  uint64 range_id = 2;
+}
+message WriteResponse {
+  uint64 log_index   = 1;
+  uint64 ops_applied = 2;
+  // Range the write was ultimately committed on. Echoes back the
+  // resolved default when the request left `range_id` unset. Zero
+  // when the server couldn't determine a specific range (should
+  // never happen in practice — kept out of `required` territory
+  // so older callers don't break).
+  uint64 range_id    = 3;
+}
+
+// Consistency level for `Read`. Added in Phase 2c-5 alongside
+// `RangeRuntime::{linearizable,stale}_get`.
+//
+// `READ_CONSISTENCY_UNSPECIFIED` preserves the Phase 1c behaviour —
+// a raw state-machine lookup with no leadership guard — so old
+// clients keep working without code changes. New clients should
+// pass `READ_CONSISTENCY_LINEARIZABLE` for OLTP point reads and
+// `READ_CONSISTENCY_STALE` for explicitly stale bounded-staleness
+// reads.
+enum ReadConsistency {
+  READ_CONSISTENCY_UNSPECIFIED  = 0;
+  READ_CONSISTENCY_LINEARIZABLE = 1;
+  READ_CONSISTENCY_STALE        = 2;
+}
+
+message ReadRequest {
+  bytes key = 1;
+  // Target range. `0` (or unset) means "the default range"
+  // (`DEFAULT_RANGE_ID = 1`). Added in Phase 2c-5 so operators can
+  // read from any range the node serves without spinning up a
+  // per-range client.
+  uint64 range_id = 2;
+  // Consistency level. Unspecified is a raw state-machine
+  // lookup (back-compat for Phase 1c callers); linearizable and
+  // stale map to `RangeRuntime::linearizable_get` and
+  // `RangeRuntime::stale_get` respectively.
+  ReadConsistency consistency = 3;
+}
+message ReadResponse {
+  bool   found            = 1;
+  bytes  value            = 2;
+  // Range actually served. Echoes back the resolved default when
+  // the request left `range_id` unset.
+  uint64 range_id         = 3;
+  // Log index the state machine had applied at the moment we
+  // read the key. Populated for `LINEARIZABLE` reads (from
+  // `LeadershipStatus::last_applied_index`) so clients can pair
+  // reads with writes. Zero when unknown.
+  uint64 read_log_index   = 4;
+}
+
+message StatusRequest {}
+message StatusResponse {
+  // UTF-8 JSON with node id, current leader, term, applied index,
+  // membership, and snapshot metadata. Schema is advisory for now.
+  bytes json = 1;
+}
+
+// ----- Phase 2c-3c: range-aware admin message shapes -----
+
+// Replica role on the wire. Matches `aresadb_pd::types::ReplicaRole`.
+enum ReplicaRole {
+  REPLICA_ROLE_UNSPECIFIED = 0;
+  REPLICA_ROLE_VOTER       = 1;
+  REPLICA_ROLE_LEARNER     = 2;
+}
+
+// Placement record — which node+store owns a replica and in what role.
+message ReplicaPlacement {
+  uint64      node_id  = 1;
+  uint64      store_id = 2;
+  ReplicaRole role     = 3;
+}
+
+// Lease info for a range leader. `expires_at_millis` is Unix-millis
+// against the cluster's hybrid logical clock.
+message RangeLease {
+  uint64 holder             = 1;
+  uint64 expires_at_millis  = 2;
+}
+
+// Mirror of `aresadb_pd::types::RangeDescriptor` on the wire.
+message RangeDescriptor {
+  uint64                    range_id       = 1;
+  bytes                     start_key      = 2;
+  bytes                     end_key        = 3;
+  repeated ReplicaPlacement replicas       = 4;
+  uint64                    raft_group_id  = 5;
+  uint64                    epoch          = 6;
+  uint64                    generation     = 7;
+  optional RangeLease       lease          = 8;
+}
+
+message AddRangeRequest {
+  // Descriptor for the new range. `raft_group_id` defaults to
+  // `range_id` on the server side if zero.
+  RangeDescriptor descriptor         = 1;
+  // If true, the node self-initialises as a single voter for the
+  // new range. Typical for the first node of a brand-new range; all
+  // other members join as learners via AddLearner later.
+  bool            bootstrap_as_voter = 2;
+}
+message AddRangeResponse {
+  RangeDescriptor descriptor = 1;
+}
+
+message RemoveRangeRequest {
+  uint64 range_id = 1;
+  // If true, tear the runtime down even if outstanding references
+  // are still held. Default (false) fails with FAILED_PRECONDITION
+  // if the runtime can't be consumed cleanly.
+  bool   force    = 2;
+}
+message RemoveRangeResponse {}
+
+message ListRangesRequest {}
+message ListRangesResponse {
+  repeated RangeDescriptor ranges = 1;
+}

@@ -1,6 +1,72 @@
+[workspace]
+# Workspace members for the v2 distributed architecture. The root package
+# (this Cargo.toml) remains the main `aresadb` crate for backward compat;
+# new layers land as sibling crates in `crates/`. See
+# `docs/architecture-v2.md` for the full layout plan.
+#
+# `python/` is intentionally NOT a workspace member so the pyo3
+# extension-module linkage doesn't leak into every `cargo build`.
+# It's still tied to the root crate via `path = ".."` and gets its
+# own Cargo.lock when built with maturin.
+members = [
+    "crates/aresadb-core",
+    "crates/aresadb-engine-redb",
+    "crates/aresadb-engine-lsm",
+    "crates/aresadb-raft",
+    "crates/aresadb-net",
+    "crates/aresadb-cluster",
+    "crates/aresadb-pd",
+    "crates/aresadb-sim",
+]
+exclude = ["python"]
+
+# Workspace-wide dependency versions used by the new v2 crates. The
+# root `aresadb` crate still pins its own versions above for backward
+# compatibility; v2 crates should consume these via
+# `openraft.workspace = true` etc.
+[workspace.dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+bytes = { version = "1.5", features = ["serde"] }
+futures = "0.3"
+parking_lot = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+tracing = "0.1"
+tokio = { version = "1.35", features = ["full", "parking_lot"] }
+openraft = { version = "0.9.22", features = ["serde", "storage-v2", "tracing-log"] }
+
+# Networking (Phase 1b+): tonic gRPC transport + prost protobuf
+# runtime. Versions are centralised here so `aresadb-net`,
+# `aresadb-cluster`, and future transport layers stay in lock-step.
+tonic = "0.11"
+tonic-build = "0.11"
+prost = "0.12"
+prost-types = "0.12"
+
+# Durable backends (Phase 1c+): embedded ACID store used by default
+# for both the Raft log and state machine data.
+redb = "2.0"
+
+# LSM backend (Phase 2d+): fjall is the "write-heavy workload" engine
+# — a log-structured merge tree over journal + memtable + levelled
+# SSTables. Pinned to 3.1.x; 3.x's `Database::builder(path).open()` API
+# is stable, and the workspace's Rust 1.95 toolchain clears fjall's
+# 1.90 MSRV comfortably. Enabled via `bytes_1` so fjall's `UserKey` /
+# `UserValue` types are `bytes::Bytes` directly — same slice type
+# `aresadb-core` already uses, so we don't have to copy across the
+# backend boundary.
+fjall = { version = "3.1", features = ["bytes_1"] }
+
+# CLI + admin tooling (Phase 1c): clap for the admin binary, serde_json
+# for human-readable cluster status dumps.
+clap = { version = "4.4", features = ["derive", "env"] }
+serde_json = "1.0"
+
 [package]
 name = "aresadb"
-version = "0.2.1"
+version = "2.0.0-alpha.2"
 edition = "2021"
 authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
 description = "High-performance multi-model database engine — KV, Graph, SQL, Vector Search, and Full-Text Search in one binary"
@@ -113,6 +179,18 @@ rstest = "0.18"
 serial_test = "3.0"
 tracing-test = "0.2"
 
+# v2 distributed crates — dev-only so the release build of the root
+# v1 `aresadb` binary stays unchanged. These are wired in solely so
+# `benches/v2_cluster_bench.rs` can measure the alpha.2 stack
+# (StorageBackend impls + Raft apply loop) side-by-side with the
+# legacy v0.2-era `distributed_bench`. See
+# `docs/publishing-audit.md` for how this slots into the
+# v2 benchmarking plan.
+aresadb-core = { path = "crates/aresadb-core" }
+aresadb-raft = { path = "crates/aresadb-raft" }
+aresadb-engine-redb = { path = "crates/aresadb-engine-redb" }
+aresadb-engine-lsm = { path = "crates/aresadb-engine-lsm" }
+
 [[bench]]
 name = "storage_bench"
 harness = false
@@ -123,6 +201,10 @@ harness = false
 
 [[bench]]
 name = "distributed_bench"
+harness = false
+
+[[bench]]
+name = "v2_cluster_bench"
 harness = false
 
 [profile.release]

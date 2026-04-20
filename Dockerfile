@@ -10,16 +10,23 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# Workspace manifest + every member's manifest first (dependency cache).
 COPY Cargo.toml ./
+COPY crates/aresadb-core/Cargo.toml crates/aresadb-core/Cargo.toml
+COPY crates/aresadb-sim/Cargo.toml crates/aresadb-sim/Cargo.toml
 
-# Dummy src for dependency caching
-RUN mkdir src && \
+# Dummy srcs for each member so `cargo build` resolves/builds deps.
+RUN mkdir -p src crates/aresadb-core/src crates/aresadb-sim/src && \
     echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib() {}" > src/lib.rs && \
-    cargo build --release 2>/dev/null || true && \
-    rm -rf src target/release/deps/aresadb*
+    echo "pub fn lib() {}" > crates/aresadb-core/src/lib.rs && \
+    echo "pub fn lib() {}" > crates/aresadb-sim/src/lib.rs && \
+    cargo build --release --bin aresadb 2>/dev/null || true && \
+    rm -rf src crates/aresadb-core/src crates/aresadb-sim/src \
+           target/release/deps/aresadb*
 
 COPY src ./src
+COPY crates ./crates
 COPY tests ./tests
 COPY benches ./benches
 COPY examples ./examples
@@ -56,6 +63,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 LABEL org.opencontainers.image.title="AresaDB" \
       org.opencontainers.image.description="High-performance multi-model database in Rust" \
-      org.opencontainers.image.version="0.2.1" \
+      org.opencontainers.image.version="2.0.0-alpha.2" \
       org.opencontainers.image.source="https://github.com/yoreai/aresadb" \
       org.opencontainers.image.licenses="MIT"

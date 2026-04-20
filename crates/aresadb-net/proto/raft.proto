@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+//
+// AresaDB Raft transport protocol.
+//
+// Each RPC wraps a single bincode-encoded blob. See
+// `crates/aresadb-net/README.md` for the rationale — the short version
+// is: wire consumers are always other AresaDB nodes, so opaque payloads
+// let us track upstream openraft changes with zero conversion boilerplate.
+//
+// Every RPC also carries a `raft_group_id` so a single listener can
+// host many Raft groups (one per range, as of Phase 2c). Phase 1
+// clients that only know about the singleton group send
+// `raft_group_id = 0` and the server routes those to the default
+// group — keeping the single-shard cluster path unchanged on the
+// wire.
+
+syntax = "proto3";
+
+package aresadb.raft.v1;
+
+service RaftService {
+  // Leader → follower: append entries / heartbeat.
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+
+  // Candidate → peer: request vote.
+  rpc Vote(VoteRequest) returns (VoteResponse);
+
+  // Leader → follower: send a state machine snapshot. Currently a
+  // unary RPC; if snapshots grow large enough that buffering becomes
+  // a problem, Phase 2 will promote this to server streaming with
+  // chunked payloads.
+  rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
+}
+
+message AppendEntriesRequest {
+  // bincode-encoded `openraft::raft::AppendEntriesRequest<TypeConfig>`.
+  bytes payload = 1;
+  // Target Raft group. `0` = the singleton / default group that
+  // covers the whole user keyspace in Phase 1 deployments; non-zero
+  // values route to a specific range's Raft group in Phase 2c
+  // multi-Raft deployments.
+  uint64 raft_group_id = 2;
+}
+
+message AppendEntriesResponse {
+  // bincode-encoded `openraft::raft::AppendEntriesResponse<NodeId>`
+  // on success, or a bincode-encoded `openraft::error::RaftError<NodeId>`
+  // on logical failure. Transport-level failures (connection refused,
+  // timeouts, deserialization errors) use tonic's `Status` instead.
+  bytes payload = 1;
+  bool  is_error = 2;
+}
+
+message VoteRequest {
+  bytes payload = 1;
+  // See `AppendEntriesRequest.raft_group_id`.
+  uint64 raft_group_id = 2;
+}
+
+message VoteResponse {
+  bytes payload = 1;
+  bool  is_error = 2;
+}
+
+message InstallSnapshotRequest {
+  bytes payload = 1;
+  // See `AppendEntriesRequest.raft_group_id`.
+  uint64 raft_group_id = 2;
+}
+
+message InstallSnapshotResponse {
+  bytes payload = 1;
+  // `is_error == true` indicates the payload is an
+  // `openraft::error::RaftError<NodeId, InstallSnapshotError>`.
+  bool  is_error = 2;
+}

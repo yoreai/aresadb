@@ -14,6 +14,21 @@
 
 </div>
 
+> **v2 distributed architecture in progress.** v0.2.1 remains the latest
+> stable embedded release. The `main` branch is now tracking
+> `2.0.0-alpha.2` — the full multi-Raft + range-sharded cluster, with a
+> replicated placement driver (`aresadb-pd`), range-aware
+> `ClusterNode` (many Raft groups per node, PD-driven add/remove,
+> leader-lease reads), range-aware write / read RPCs, deterministic-
+> simulation coverage for cross-range isolation, a 3-node Docker
+> Compose smoke, and an opt-in fjall-backed LSM data engine
+> alongside the default redb. The full Phase-2 arc (2a keyspace, 2b
+> PD, 2c range-aware cluster, 2d LSM) is on disk, tested, and
+> clippy-clean. See
+> [`docs/architecture-v2.md`](docs/architecture-v2.md) for the full
+> design and [`docs/phase-status.md`](docs/phase-status.md) for live
+> progress. Distributed query (Phase 3) is next.
+
 ---
 
 ## Install

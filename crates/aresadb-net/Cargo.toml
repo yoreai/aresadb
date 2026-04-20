@@ -1,0 +1,45 @@
+[package]
+name = "aresadb-net"
+version = "2.0.0-alpha.2"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "gRPC transport for AresaDB v2 — carries Raft RPCs and future client traffic"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "aresadb_net"
+path = "src/lib.rs"
+
+[dependencies]
+aresadb-core = { path = "../aresadb-core" }
+aresadb-raft = { path = "../aresadb-raft" }
+
+anyhow.workspace = true
+async-trait.workspace = true
+bincode.workspace = true
+bytes.workspace = true
+futures.workspace = true
+openraft.workspace = true
+parking_lot.workspace = true
+prost.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
+# Ships a prebuilt `protoc` binary per target so contributors don't
+# need to install one locally. Keeps the build hermetic on CI and
+# avoids a cmake / C++ toolchain dependency.
+protoc-bin-vendored = "3.1"
+
+[dev-dependencies]
+tempfile = "3.9"
+tokio = { workspace = true }
+tokio-stream = { version = "0.1", features = ["net"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

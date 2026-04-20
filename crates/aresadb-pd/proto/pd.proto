@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: MIT
+//
+// AresaDB Placement Driver admin protocol.
+//
+// This is the control-plane gRPC surface for the PD Raft group.
+// Operators and the `aresadb-cluster` CLI talk to this service to
+// create/split/merge ranges, register cluster nodes, update leases,
+// and inspect the catalog. Mutations funnel through a single Raft
+// log on the PD side so every admin write is linearizable and
+// durable the moment the RPC returns.
+//
+// Design choices:
+//
+// * Typed messages (not opaque bincode) so every other language can
+//   call the admin surface without depending on the Rust crate.
+// * Mutations map 1:1 to `PdCommand` variants — the server just
+//   translates the protobuf into the Rust command, calls
+//   `Raft::client_write`, and folds the response back. Catalog
+//   rejections surface as tonic `FailedPrecondition`; missing-leader
+//   errors surface as `Unavailable` with a `leader-id` trailer so
+//   the CLI can retry against the right endpoint.
+// * Reads go through the local `PdStateMachine` — any voter can
+//   serve them. They reflect this member's last-applied log, which
+//   is eventually consistent across the quorum. The admin client
+//   marks read RPCs that way so callers know what they're getting.
+
+syntax = "proto3";
+
+package aresadb.pd.v1;
+
+service PlacementDriverAdmin {
+  // ---------- Mutations (Raft-replicated) ----------
+
+  // Register or update a cluster node's address + store list.
+  // Idempotent: re-registering the same node preserves its last
+  // heartbeat. Must be called before the node's first
+  // `HeartbeatNode`.
+  rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse);
+
+  // Report a node as alive at `last_seen_millis`. The catalog only
+  // moves the heartbeat timestamp forward, so out-of-order
+  // heartbeats (e.g. a retry arriving late) are harmless.
+  rpc HeartbeatNode(HeartbeatNodeRequest) returns (HeartbeatNodeResponse);
+
+  // Insert a brand-new range descriptor. Used for genesis (covering
+  // the entire keyspace) or for synthetic ranges introduced by an
+  // operator. Overlapping ranges, duplicate ids, or duplicate Raft
+  // group ids all reject with `FailedPrecondition`.
+  rpc CreateRange(CreateRangeRequest) returns (CreateRangeResponse);
+
+  // Split a range at `split_key`. Parent's `end_key` shrinks to
+  // `split_key`; a new range covering `[split_key, old_end)` is
+  // created with an id allocated from the PD's monotonic counter.
+  // Returns the new right-hand-side descriptor.
+  rpc SplitRange(SplitRangeRequest) returns (SplitRangeResponse);
+
+  // Merge two adjacent ranges. `left.end_key` must equal
+  // `right.start_key`; both must share the same replica multiset.
+  // After the merge the right range is dissolved and `left` covers
+  // the union.
+  rpc MergeRanges(MergeRangesRequest) returns (MergeRangesResponse);
+
+  // Replace a range's replica set atomically. `new_epoch` must be
+  // strictly greater than the range's current epoch — stale
+  // membership changes regress the epoch and are rejected.
+  rpc UpdateMembership(UpdateMembershipRequest) returns (UpdateMembershipResponse);
+
+  // Install, renew, or clear the leader lease on a range.
+  rpc UpdateLease(UpdateLeaseRequest) returns (UpdateLeaseResponse);
+
+  // ---------- Reads (served from the local state machine) ----------
+
+  // Look up a range by id.
+  rpc GetRange(GetRangeRequest) returns (GetRangeResponse);
+
+  // Look up the range that currently owns `key`. Returns `found=false`
+  // when `key` falls in a catalog gap — the catalog allows gaps
+  // between ranges at the data-model level.
+  rpc GetRangeByKey(GetRangeByKeyRequest) returns (GetRangeByKeyResponse);
+
+  // Dump every range. Ordering follows `start_key` (lex) so callers
+  // can visualise the keyspace directly.
+  rpc ListRanges(ListRangesRequest) returns (ListRangesResponse);
+
+  // Look up a single node in the cluster inventory.
+  rpc GetNode(GetNodeRequest) returns (GetNodeResponse);
+
+  // Dump every registered node, ordered by node id.
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse);
+
+  // JSON dump of PD Raft + catalog state: current leader, applied
+  // index, range count, node count, voter / learner sets. Rendered
+  // server-side so the schema can evolve without breaking clients
+  // that only care about a few fields.
+  rpc Status(PdStatusRequest) returns (PdStatusResponse);
+}
+
+// ---------- Core descriptors ----------
+
+enum ReplicaRolePb {
+  REPLICA_ROLE_UNSPECIFIED = 0;
+  REPLICA_ROLE_VOTER = 1;
+  REPLICA_ROLE_LEARNER = 2;
+}
+
+message ReplicaPlacementPb {
+  uint64 node_id = 1;
+  uint64 store_id = 2;
+  ReplicaRolePb role = 3;
+}
+
+message LeaseInfoPb {
+  uint64 holder = 1;
+  uint64 expires_at_millis = 2;
+}
+
+// Mirror of `aresadb_pd::RangeDescriptor`. `lease` is optional —
+// absent means the range has no leader lease right now.
+message RangeDescriptorPb {
+  uint64 range_id = 1;
+  bytes  start_key = 2;
+  // Empty `end_key` denotes +infinity (top of the keyspace).
+  bytes  end_key = 3;
+  repeated ReplicaPlacementPb replicas = 4;
+  uint64 raft_group_id = 5;
+  uint64 epoch = 6;
+  uint64 generation = 7;
+  optional LeaseInfoPb lease = 8;
+}
+
+message NodeInfoPb {
+  uint64 node_id = 1;
+  string address = 2;
+  repeated uint64 stores = 3;
+  uint64 last_heartbeat_millis = 4;
+}
+
+// ---------- Mutation requests / responses ----------
+
+message RegisterNodeRequest {
+  NodeInfoPb node = 1;
+}
+message RegisterNodeResponse {}
+
+message HeartbeatNodeRequest {
+  uint64 node_id = 1;
+  uint64 last_seen_millis = 2;
+}
+message HeartbeatNodeResponse {}
+
+message CreateRangeRequest {
+  RangeDescriptorPb range = 1;
+}
+message CreateRangeResponse {
+  RangeDescriptorPb range = 1;
+}
+
+message SplitRangeRequest {
+  uint64 parent_range_id = 1;
+  // Must lie strictly inside the parent's span.
+  bytes  split_key = 2;
+}
+message SplitRangeResponse {
+  // The newly-allocated right-hand-side descriptor.
+  RangeDescriptorPb new_range = 1;
+}
+
+message MergeRangesRequest {
+  uint64 left_range_id = 1;
+  uint64 right_range_id = 2;
+}
+message MergeRangesResponse {}
+
+message UpdateMembershipRequest {
+  uint64 range_id = 1;
+  repeated ReplicaPlacementPb new_replicas = 2;
+  uint64 new_epoch = 3;
+}
+message UpdateMembershipResponse {}
+
+// To install a lease, set `lease`. To clear a lease, set `clear`
+// to true and leave `lease` unset. Setting both is a programming
+// error and is rejected as `InvalidArgument`.
+message UpdateLeaseRequest {
+  uint64 range_id = 1;
+  optional LeaseInfoPb lease = 2;
+  bool clear = 3;
+}
+message UpdateLeaseResponse {}
+
+// ---------- Read requests / responses ----------
+
+message GetRangeRequest {
+  uint64 range_id = 1;
+}
+message GetRangeResponse {
+  bool found = 1;
+  RangeDescriptorPb range = 2;
+}
+
+message GetRangeByKeyRequest {
+  bytes key = 1;
+}
+message GetRangeByKeyResponse {
+  bool found = 1;
+  RangeDescriptorPb range = 2;
+}
+
+message ListRangesRequest {}
+message ListRangesResponse {
+  repeated RangeDescriptorPb ranges = 1;
+}
+
+message GetNodeRequest {
+  uint64 node_id = 1;
+}
+message GetNodeResponse {
+  bool found = 1;
+  NodeInfoPb node = 2;
+}
+
+message ListNodesRequest {}
+message ListNodesResponse {
+  repeated NodeInfoPb nodes = 1;
+}
+
+message PdStatusRequest {}
+message PdStatusResponse {
+  // UTF-8 JSON. Advisory schema — see `PdAdminService::status`.
+  bytes json = 1;
+}

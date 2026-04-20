@@ -142,8 +142,7 @@ pub use schema::{
 #[allow(unused_imports)]
 pub use distributed::{
     BloomFilter, CompressionStats, Compressor, CountingBloomFilter, Cursor, ReplicaConfig,
-    ReplicaSet, ReplicaState, ResultStream, ShardConfig, ShardManager, StreamSender, WalEntry,
-    WalEntryType, WriteAheadLog,
+    ReplicaSet, ReplicaState, ResultStream, ShardConfig, ShardManager, StreamSender,
 };
 
 #[allow(unused_imports)]

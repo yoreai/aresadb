@@ -1,0 +1,124 @@
+# AresaDB v2 — 3-node cluster (Phase 1d integration)
+#
+# Brings up three `aresadb-cluster` nodes on a dedicated Docker
+# network. Node 1 bootstraps; nodes 2 and 3 start in `join` mode and
+# wait to be added.
+#
+# Lifecycle:
+#   docker compose -f docker/cluster/docker-compose.yml up -d
+#   bash    docker/cluster/bootstrap.sh          # one-shot: promotes 2 and 3 to voters
+#
+# The admin CLI inside `bootstrap.sh` runs inside a throwaway
+# aresadb-cluster container so you don't need the binary on the host.
+
+services:
+  aresadb-node-1:
+    build:
+      context: ../..
+      dockerfile: docker/cluster/Dockerfile
+    image: aresadb-cluster:2.0.0-alpha.2
+    container_name: aresadb-node-1
+    hostname: aresadb-node-1
+    command:
+      - bootstrap
+      - --node-id=1
+      - --listen=0.0.0.0:7001
+      - --advertise=http://aresadb-node-1:7001
+      - --data-dir=/var/lib/aresadb/data
+    environment:
+      RUST_LOG: info,aresadb_cluster=debug,openraft=info
+    networks:
+      - aresadb
+    ports:
+      - "7001:7001"
+    volumes:
+      - aresadb-node-1-data:/var/lib/aresadb/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/aresadb-cluster
+        - status
+        - --addr
+        - http://127.0.0.1:7001
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  aresadb-node-2:
+    image: aresadb-cluster:2.0.0-alpha.2
+    container_name: aresadb-node-2
+    hostname: aresadb-node-2
+    depends_on:
+      aresadb-node-1:
+        condition: service_healthy
+    command:
+      - join
+      - --node-id=2
+      - --listen=0.0.0.0:7001
+      - --advertise=http://aresadb-node-2:7001
+      - --data-dir=/var/lib/aresadb/data
+    environment:
+      RUST_LOG: info,aresadb_cluster=debug,openraft=info
+    networks:
+      - aresadb
+    ports:
+      - "7002:7001"
+    volumes:
+      - aresadb-node-2-data:/var/lib/aresadb/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/aresadb-cluster
+        - status
+        - --addr
+        - http://127.0.0.1:7001
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  aresadb-node-3:
+    image: aresadb-cluster:2.0.0-alpha.2
+    container_name: aresadb-node-3
+    hostname: aresadb-node-3
+    depends_on:
+      aresadb-node-1:
+        condition: service_healthy
+    command:
+      - join
+      - --node-id=3
+      - --listen=0.0.0.0:7001
+      - --advertise=http://aresadb-node-3:7001
+      - --data-dir=/var/lib/aresadb/data
+    environment:
+      RUST_LOG: info,aresadb_cluster=debug,openraft=info
+    networks:
+      - aresadb
+    ports:
+      - "7003:7001"
+    volumes:
+      - aresadb-node-3-data:/var/lib/aresadb/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/aresadb-cluster
+        - status
+        - --addr
+        - http://127.0.0.1:7001
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+networks:
+  aresadb:
+    name: aresadb-cluster
+
+volumes:
+  aresadb-node-1-data:
+  aresadb-node-2-data:
+  aresadb-node-3-data:

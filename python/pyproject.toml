@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "aresadb"
-version = "0.2.1"
+version = "2.0.0a2"
 description = "High-performance multi-model database — KV, Graph, SQL, Vector Search, Full-Text Search"
 readme = "README.md"
 license = { text = "MIT" }

@@ -1,0 +1,31 @@
+[package]
+name = "aresadb-engine-redb"
+version = "2.0.0-alpha.2"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "redb-backed implementation of aresadb-core::StorageBackend — the default durable engine for v2"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "aresadb_engine_redb"
+path = "src/lib.rs"
+
+[dependencies]
+aresadb-core = { path = "../aresadb-core" }
+
+anyhow.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+futures.workspace = true
+parking_lot.workspace = true
+redb.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3.9"
+tokio = { workspace = true }

@@ -4,11 +4,9 @@
 
 mod common;
 
-use aresadb::distributed::{
-    BloomFilter, Compressor, ShardConfig, ShardManager, WalEntryType, WriteAheadLog,
-};
+use aresadb::distributed::{BloomFilter, Compressor, ShardConfig, ShardManager};
 use aresadb::query::{Operator, QueryOperation, QueryParser};
-use aresadb::storage::{Database, Edge, Node, NodeId, Value};
+use aresadb::storage::{Database, Node, Value};
 use tempfile::TempDir;
 
 // ============================================================================
@@ -406,71 +404,6 @@ mod compression_tests {
 
         assert!(stats.ratio > 1.0);
         assert!(compressed.len() < data.len());
-    }
-}
-
-// ============================================================================
-// WAL Tests
-// ============================================================================
-
-mod wal_tests {
-    use super::*;
-
-    #[test]
-    fn test_wal_durability() {
-        let temp = TempDir::new().unwrap();
-        let wal_path = temp.path().join("test.wal");
-
-        // Write entries
-        {
-            let wal = WriteAheadLog::open(&wal_path).unwrap();
-
-            for i in 0..10 {
-                wal.append(WalEntryType::InsertNode, format!("data_{}", i).into_bytes())
-                    .unwrap();
-            }
-
-            wal.flush().unwrap();
-        }
-
-        // Recover and verify
-        {
-            let wal = WriteAheadLog::open(&wal_path).unwrap();
-            let entries = wal.read_all().unwrap();
-
-            assert_eq!(entries.len(), 10);
-
-            for (i, entry) in entries.iter().enumerate() {
-                assert_eq!(entry.lsn, (i + 1) as u64);
-                assert_eq!(entry.entry_type, WalEntryType::InsertNode);
-            }
-        }
-    }
-
-    #[test]
-    fn test_wal_checkpoint() {
-        let temp = TempDir::new().unwrap();
-        let wal_path = temp.path().join("test.wal");
-
-        let wal = WriteAheadLog::open(&wal_path).unwrap();
-
-        // Write some entries
-        for _ in 0..5 {
-            wal.append(WalEntryType::InsertNode, vec![1, 2, 3]).unwrap();
-        }
-
-        // Checkpoint
-        let checkpoint_lsn = wal.checkpoint().unwrap();
-        assert!(checkpoint_lsn > 0);
-
-        // More entries
-        for _ in 0..3 {
-            wal.append(WalEntryType::InsertNode, vec![4, 5, 6]).unwrap();
-        }
-
-        // Total should be 5 + 1 checkpoint + 3 = 9
-        let entries = wal.read_all().unwrap();
-        assert_eq!(entries.len(), 9);
     }
 }
 

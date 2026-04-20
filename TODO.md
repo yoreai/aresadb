@@ -1,8 +1,14 @@
 # AresaDB Roadmap
 
 > Last updated: April 2026
+>
+> **v2 distributed architecture is underway.** See
+> [`docs/architecture-v2.md`](docs/architecture-v2.md) for the full spec
+> and [`docs/phase-status.md`](docs/phase-status.md) for live execution
+> status. This file still tracks v1 areas; v2 roadmap lives in
+> `phase-status.md` so we don't double-maintain it.
 
-## Status
+## v1 status (embedded, single-node)
 
 | Area | Status |
 |------|--------|
@@ -12,7 +18,7 @@
 | Vector / RAG | Done |
 | Docker | Done |
 | CI/CD | Done |
-| Distributed (structure) | Done |
+| Distributed (building blocks) | Done (scaffolding only — real distribution lives in v2) |
 | Cloud Storage (S3/GCS) | Done (emulator + real-cloud smoke) |
 | Tiered Storage (local+cloud) | Done |
 | Secondary Indexes | Done |
@@ -25,6 +31,18 @@
 | Automated Release Pipeline | Done |
 | Reproducible Benchmarks | Done |
 | Publication Draft | Done |
+
+## v2 status (distributed)
+
+| Phase | Status |
+|-------|--------|
+| Phase 0 — Foundations (workspace, `StorageBackend`, madsim harness) | Done |
+| Phase 1 — Single-shard cluster (openraft + gRPC + durable redb + 3-node compose) | Done — tagged `v2.0.0-alpha.1` |
+| Phase 2 — Multi-Raft + range sharding + LSM backend | Done — tagged `v2.0.0-alpha.2` |
+| Phase 3 — Distributed query execution | Planned |
+| Phase 4 — Distributed transactions (MVCC + parallel commit + SSI) | Planned |
+| Phase 5 — Thread-per-core LSM engine (headline benchmark numbers) | Planned |
+| Phase 6 — CDC change feeds + online distributed schema changes | Planned |
 
 ---
 
@@ -49,10 +67,19 @@
 - [x] Server wire protocol: query, traversal, edge delete all implemented over TCP
 - [ ] Advanced SQL (subqueries, CTEs, JOINs)
 
-### Distributed (future)
-- [ ] Multi-master replication
-- [ ] Auto-sharding
-- [ ] Cross-shard queries
+### Distributed — moved to v2
+
+The v1 "distributed building blocks" (`src/distributed/`) were always a
+scaffolding placeholder: a shard manager with in-process sharding, a
+Raft-like state machine that had no transport, a WAL stub, bloom filters,
+compressors. None of them are wired into a real multi-node cluster.
+
+The real distributed story is v2. See `docs/architecture-v2.md`.
+
+- Multi-master replication → v2 Phase 4 (cross-shard transactions).
+- Auto-sharding → v2 Phase 2 (range-based splits/merges/rebalancing).
+- Cross-shard queries → v2 Phase 3 (scatter-gather, distributed BFS /
+  vector / full-text).
 
 ### Publication
 - [x] Reproducible benchmark suite (`cargo run --example benchmark_suite --release`)

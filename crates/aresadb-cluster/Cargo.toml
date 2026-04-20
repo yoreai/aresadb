@@ -1,0 +1,52 @@
+[package]
+name = "aresadb-cluster"
+version = "2.0.0-alpha.2"
+edition = "2021"
+authors = ["Yevheniy Chuba <yevheniyc@gmail.com>"]
+description = "Cluster lifecycle + admin API for AresaDB v2 — bootstrap, join, membership changes"
+license = "MIT"
+repository = "https://github.com/yoreai/aresadb"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "aresadb_cluster"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aresadb-cluster"
+path = "src/bin/cli.rs"
+
+[dependencies]
+aresadb-core = { path = "../aresadb-core" }
+aresadb-engine-lsm = { path = "../aresadb-engine-lsm" }
+aresadb-engine-redb = { path = "../aresadb-engine-redb" }
+aresadb-net = { path = "../aresadb-net" }
+aresadb-pd = { path = "../aresadb-pd" }
+aresadb-raft = { path = "../aresadb-raft" }
+
+anyhow.workspace = true
+async-trait.workspace = true
+bincode.workspace = true
+bytes.workspace = true
+clap.workspace = true
+futures.workspace = true
+openraft.workspace = true
+parking_lot.workspace = true
+prost.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[build-dependencies]
+tonic-build.workspace = true
+protoc-bin-vendored = "3.1"
+
+[dev-dependencies]
+tempfile = "3.9"
+tokio = { workspace = true }
+tokio-stream = { version = "0.1", features = ["net"] }
