@@ -95,6 +95,52 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   v2 alpha cross-reference, keyword list gained `"Multi-Raft (v2
   alpha)"`. Card remains authoritative for the **v1 embedded** paper.
 
+### Fixed (v2.0.0-alpha.2 release pipeline follow-ups)
+
+Post-tag follow-ups surfaced by the first real tag-driven release
+run on 2026-04-20. Everything in this block is back-compatible and
+stays at the `2.0.0-alpha.2` version number — crates.io + PyPI were
+already published successfully by the tag, so no version bump.
+
+- **rustdoc intra-doc links** across `aresadb-pd`, `aresadb-cluster`,
+  `aresadb-raft`, and `aresadb-sim`: fully qualify `PD_RAFT_META_KEY`
+  and `ReadError::*`, fix `PdResponse::Error` (tuple fields aren't
+  allowed), use `super::PdLogStore` / `super::reconciler::*` paths,
+  replace redundant explicit link targets, and demote the link to a
+  private `MultiRangeApplyDeterminism::run_on_new_nodes` helper to
+  prose. Unblocks the `Docs` CI job under `-D warnings`.
+- **clippy `manual_is_multiple_of`**: `src/cli/repl.rs` used
+  `quotes % 2 != 0`; switched to `!quotes.is_multiple_of(2)` for
+  Rust 1.95's newly stable method + lint.
+- **`python/Cargo.lock` + root `Cargo.lock` tracked.** Both lockfiles
+  are now under version control so the PyO3 wheel build and the v2
+  cluster Docker image resolve deps deterministically across CI and
+  local builds. `.gitignore` gained an explanatory comment covering
+  both.
+- **`docker/cluster/Dockerfile` + root `Dockerfile` realignment.**
+  The cargo-chef-style warmup phase was copying / stubbing an out-
+  of-date workspace member list; added `aresadb-engine-lsm` and
+  `aresadb-pd` Cargo.tomls + stub sources, plus stubs for every
+  root-crate `[[bin]]`, `[[bench]]`, and `[[example]]` target so
+  `cargo fetch --locked` actually parses the manifest. Base image
+  bumped `1.85-slim-bookworm` → `1.90-slim-bookworm` to satisfy
+  `fjall`'s MSRV, and the workspace `rust-version` was raised to
+  match (it was stale at `1.85`). Runtime stage now pre-creates
+  `/var/lib/aresadb/data` with `aresadb:aresadb` ownership so
+  docker-compose named volumes don't fall back to root and produce
+  `Permission denied (os error 13)` at startup.
+- **`.github/workflows/release.yml`**: added `workflow_dispatch`
+  (`version` + `docker_only` inputs) so the Docker image publish
+  can be re-run against a specific version without re-hitting
+  crates.io / PyPI (both already accepted the tag). The Docker job
+  itself now targets `docker/cluster/Dockerfile` explicitly and
+  publishes to `ghcr.io/yoreai/aresadb/cluster:<version>` (the
+  legacy `ghcr.io/yoreai/aresadb` image stays reserved for the v1
+  embedded CLI).
+- **`docs/release-notes/v2.0.0-alpha.2.md`**: image path updated to
+  `ghcr.io/yoreai/aresadb/cluster` in both the "Breaking changes"
+  and "Artefacts" sections.
+
 ### In progress
 - **Phase 3 — distributed query.** Query router + physical
   planner with range awareness, filter / projection / limit
