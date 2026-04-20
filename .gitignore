@@ -1,8 +1,11 @@
 # Rust
 target/
-Cargo.lock
 *.rlib
 *.rmeta
+# Cargo.lock is intentionally checked in — this workspace ships a binary
+# (`aresadb-cluster`) and a Docker image that both need reproducible
+# builds. Downstream library consumers still get semver-compatible
+# resolution via `cargo update` on their side.
 
 # Benchmarks
 benchmark_results/
