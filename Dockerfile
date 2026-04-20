@@ -29,8 +29,12 @@ COPY crates/aresadb-pd/Cargo.toml          crates/aresadb-pd/Cargo.toml
 COPY crates/aresadb-sim/Cargo.toml         crates/aresadb-sim/Cargo.toml
 
 # Dummy srcs for each member so `cargo build` resolves/builds deps.
+# The root crate declares additional `[[bin]]`, `[[bench]]`, and
+# `[[example]]` targets; we stub them all to keep manifest
+# validation happy before the real sources land.
 RUN set -eux; \
-    mkdir -p src \
+    mkdir -p src src/bin \
+             benches examples benchmarks \
              crates/aresadb-core/src crates/aresadb-raft/src \
              crates/aresadb-net/src crates/aresadb-engine-redb/src \
              crates/aresadb-engine-lsm/src \
@@ -38,12 +42,19 @@ RUN set -eux; \
              crates/aresadb-pd/src \
              crates/aresadb-sim/src; \
     echo "fn main() {}"    > src/main.rs; \
+    echo "fn main() {}"    > src/bin/server.rs; \
     echo "pub fn lib() {}" > src/lib.rs; \
     for c in aresadb-core aresadb-raft aresadb-net aresadb-engine-redb \
              aresadb-engine-lsm aresadb-cluster aresadb-pd aresadb-sim; do \
         echo "pub fn lib() {}" > "crates/${c}/src/lib.rs"; \
     done; \
     echo "fn main() {}" > crates/aresadb-cluster/src/bin/cli.rs; \
+    for b in storage_bench query_bench distributed_bench v2_cluster_bench; do \
+        echo "fn main() {}" > "benches/${b}.rs"; \
+    done; \
+    echo "fn main() {}" > examples/fire_safety_test.rs; \
+    echo "fn main() {}" > examples/tiered_storage_demo.rs; \
+    echo "fn main() {}" > benchmarks/run_benchmarks.rs; \
     cargo fetch --locked
 
 COPY src ./src
