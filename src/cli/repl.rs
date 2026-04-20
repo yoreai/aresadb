@@ -197,7 +197,7 @@ impl Validator for ReplHelper {
         let single_quotes = input.matches('\'').count();
         let double_quotes = input.matches('"').count();
 
-        if single_quotes % 2 != 0 || double_quotes % 2 != 0 {
+        if !single_quotes.is_multiple_of(2) || !double_quotes.is_multiple_of(2) {
             return Ok(ValidationResult::Incomplete);
         }
 
