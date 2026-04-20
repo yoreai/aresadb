@@ -9,7 +9,10 @@
 # on a single host for integration testing.
 # -----------------------------------------------------------------------------
 
-FROM rust:1.85-slim-bookworm AS builder
+# Rust 1.90+ is required: `fjall` (used by aresadb-engine-lsm) has
+# an MSRV of 1.90. Keep this tag in lockstep with the workspace's
+# `rust-version` in Cargo.toml.
+FROM rust:1.90-slim-bookworm AS builder
 
 # aresadb-net uses protoc-bin-vendored, so no system protoc is strictly
 # required. But pkg-config + libssl stay useful for openraft/tonic's

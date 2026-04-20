@@ -76,7 +76,7 @@ homepage = "https://github.com/yoreai/aresadb"
 readme = "README.md"
 keywords = ["database", "graph", "vector-search", "full-text-search", "embedded"]
 categories = ["database", "command-line-utilities"]
-rust-version = "1.85"
+rust-version = "1.90"
 
 [lib]
 name = "aresadb"

@@ -7,7 +7,9 @@
 # back-compat `docker build .` flows.
 
 # === Build ===
-FROM rust:slim-bookworm AS builder
+# Rust 1.90+ is required: `fjall` (used by aresadb-engine-lsm in the
+# workspace) has an MSRV of 1.90.
+FROM rust:1.90-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
