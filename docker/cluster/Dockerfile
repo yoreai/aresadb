@@ -93,7 +93,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         tini \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --home /var/lib/aresadb --create-home --shell /usr/sbin/nologin aresadb
+    && useradd --system --home /var/lib/aresadb --create-home --shell /usr/sbin/nologin aresadb \
+    # Pre-create the data directory and chown it so that a
+    # docker-compose named volume mounted at `/var/lib/aresadb/data`
+    # inherits aresadb ownership instead of falling back to
+    # root:root (which would leave the non-root runtime user unable
+    # to write, producing `Permission denied (os error 13)` at
+    # startup).
+    && mkdir -p /var/lib/aresadb/data \
+    && chown -R aresadb:aresadb /var/lib/aresadb
 
 COPY --from=builder /aresadb-cluster /usr/local/bin/aresadb-cluster
 
