@@ -140,6 +140,30 @@ already published successfully by the tag, so no version bump.
 - **`docs/release-notes/v2.0.0-alpha.2.md`**: image path updated to
   `ghcr.io/yoreai/aresadb/cluster` in both the "Breaking changes"
   and "Artefacts" sections.
+- **Portable `gosu`-based runtime entrypoint
+  (`docker/cluster/docker-entrypoint.sh`).** The previous fix
+  (`mkdir -p /var/lib/aresadb/data && chown aresadb:aresadb` at
+  image-build time + `USER aresadb`) only worked on Linux Docker
+  hosts — there the engine copies image-path ownership into freshly
+  created named volumes. On Docker Desktop for Mac / Windows the
+  named volume materialises as `root:root` regardless, so the
+  unprivileged runtime user couldn't write redb / fjall files and
+  `Permission denied (os error 13)` came back the moment a clean
+  user pulled the image. The image now starts as root, runs the new
+  entrypoint, which `chown`s the data dir and drops to the `aresadb`
+  user via `gosu` before exec'ing the binary. This is the same
+  pattern Postgres / Redis use and it works portably across Linux
+  runners, Docker Desktop, and Kubernetes. `ARESADB_RUN_AS_ROOT=1`
+  opts out of the privilege drop for bind-mount scenarios.
+- **`docker/cluster/docker-compose.ghcr.yml` + `IMAGE` env override
+  on the helper scripts.** Adds an opt-in compose override that
+  drops `build:` and forces all three services to pull the published
+  `ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2` image. `bootstrap.sh`
+  and `multi-range.sh` now honour an `IMAGE=` env var so the same
+  scripts drive both build-from-source (default) and pull-from-GHCR
+  modes. Documented end-to-end in
+  [`docker/cluster/README.md`](docker/cluster/README.md) §Quick start
+  and [`docs/operations.md`](docs/operations.md) §3a.
 
 ### In progress
 - **Phase 3 — distributed query.** Query router + physical

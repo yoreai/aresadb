@@ -89,23 +89,29 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM debian:bookworm-slim AS runtime
 
+# `gosu` is used by docker-entrypoint.sh to drop privileges from
+# root → aresadb after fixing the ownership of the data directory.
+# This is the standard Docker pattern (Postgres, Redis, MariaDB all
+# do the same) and it's portable across:
+#   - Linux runners, where Docker copies image-path ownership into
+#     freshly-created named volumes (`USER aresadb` would have been
+#     enough); and
+#   - Docker Desktop for Mac/Windows, where named volumes always
+#     materialise as root:root regardless of the image — the
+#     entrypoint must chown them on first boot before the binary
+#     can write to redb / fjall.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
+        gosu \
         tini \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --home /var/lib/aresadb --create-home --shell /usr/sbin/nologin aresadb \
-    # Pre-create the data directory and chown it so that a
-    # docker-compose named volume mounted at `/var/lib/aresadb/data`
-    # inherits aresadb ownership instead of falling back to
-    # root:root (which would leave the non-root runtime user unable
-    # to write, producing `Permission denied (os error 13)` at
-    # startup).
     && mkdir -p /var/lib/aresadb/data \
     && chown -R aresadb:aresadb /var/lib/aresadb
 
 COPY --from=builder /aresadb-cluster /usr/local/bin/aresadb-cluster
+COPY docker/cluster/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-USER aresadb
 WORKDIR /var/lib/aresadb
 
 # Default env; individual compose services override these.
@@ -116,7 +122,10 @@ VOLUME ["/var/lib/aresadb/data"]
 
 EXPOSE 7001
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/aresadb-cluster"]
+# tini owns PID 1 (proper init: signal forwarding + zombie reaping);
+# docker-entrypoint.sh chowns the data dir if mounted as root then
+# drops to the aresadb user via gosu before exec'ing the binary.
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["--help"]
 
 LABEL org.opencontainers.image.title="AresaDB cluster" \

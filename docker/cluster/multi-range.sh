@@ -37,7 +37,11 @@
 set -euo pipefail
 
 COMPOSE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/docker-compose.yml"
-IMAGE="aresadb-cluster:2.0.0-alpha.2"
+# IMAGE override mirrors `bootstrap.sh`. Default is the locally-built
+# tag from `docker-compose.yml`; set
+# `IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2` to drive the
+# published GHCR image instead (used with `docker-compose.ghcr.yml`).
+IMAGE="${IMAGE:-aresadb-cluster:2.0.0-alpha.2}"
 NETWORK="aresadb-cluster"
 
 NODE_1="http://aresadb-node-1:7001"

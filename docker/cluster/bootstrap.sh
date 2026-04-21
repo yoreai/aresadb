@@ -18,7 +18,13 @@
 set -euo pipefail
 
 COMPOSE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/docker-compose.yml"
-IMAGE="aresadb-cluster:2.0.0-alpha.2"
+# IMAGE is overridable so the same script can drive the locally-built
+# `aresadb-cluster:2.0.0-alpha.2` (default, matches docker-compose.yml)
+# or the published `ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2`
+# (used together with docker-compose.ghcr.yml). Operators on a clean
+# machine should `export IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2`
+# before invoking this script.
+IMAGE="${IMAGE:-aresadb-cluster:2.0.0-alpha.2}"
 NETWORK="aresadb-cluster"
 
 LEADER="http://aresadb-node-1:7001"

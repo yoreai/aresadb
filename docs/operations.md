@@ -75,9 +75,9 @@ that root; nothing is kept in `$HOME` or `/tmp`. The layout is:
 
 This is the canonical smoke harness. It's what runs in CI and what the
 Phase 1d / Phase 2c-6 decision logs in
-[`phase-status.md`](./phase-status.md) depend on.
+[`phase-status.md`](./phase-status.md) depend on. Two variants:
 
-From the repo root (`aresadb/`):
+**Build from source** (developer loop, default):
 
 ```bash
 docker compose -f docker/cluster/docker-compose.yml up -d --build
@@ -85,8 +85,26 @@ bash    docker/cluster/bootstrap.sh        # promotes nodes 2 + 3 to voters
 bash    docker/cluster/multi-range.sh      # opens range 42, exercises range isolation
 ```
 
-Everything is idempotent — re-running either script is safe once the
-cluster is healthy.
+**Pull from GHCR** (operator path, no Rust toolchain on the host):
+
+```bash
+docker compose \
+  -f docker/cluster/docker-compose.yml \
+  -f docker/cluster/docker-compose.ghcr.yml \
+  up -d
+IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2 \
+  bash docker/cluster/bootstrap.sh
+IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2 \
+  bash docker/cluster/multi-range.sh
+```
+
+Both modes are idempotent — re-running either script is safe once the
+cluster is healthy. The image runs an entrypoint that chowns the
+data directory at startup and drops to the unprivileged `aresadb`
+user via `gosu`, which is what makes the volume mount work the same
+on Linux runners and Docker Desktop for Mac/Windows. Set
+`ARESADB_RUN_AS_ROOT=1` only when you need to bind-mount a host
+directory whose UID/GID you want to preserve.
 
 See [`docker/cluster/README.md`](../docker/cluster/README.md) for a
 full walk-through including expected output and the operator flows.

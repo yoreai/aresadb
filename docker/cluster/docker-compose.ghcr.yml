@@ -1,0 +1,42 @@
+# AresaDB v2 — 3-node cluster running the *published* GHCR image
+#
+# Use this as a Compose override on top of `docker-compose.yml` to
+# pull the production image from GitHub Container Registry instead of
+# building from source. This is the path operators on a clean machine
+# (no Rust toolchain, no `cargo`, no source checkout beyond the two
+# YAMLs) should follow.
+#
+# Lifecycle:
+#   docker compose \
+#     -f docker/cluster/docker-compose.yml \
+#     -f docker/cluster/docker-compose.ghcr.yml \
+#     up -d
+#   IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2 \
+#     bash docker/cluster/bootstrap.sh
+#   IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2 \
+#     bash docker/cluster/multi-range.sh
+#
+# Why a separate file?
+#
+# `docker-compose.yml` is the developer-loop default and intentionally
+# carries `build:` + a local-only image tag so `docker compose up
+# --build` rebuilds incrementally on a code change. Production
+# operators want a deterministic, content-addressed image with no
+# Rust toolchain on the host, which is what this override delivers.
+# Operators stay free to pin to a specific digest by replacing
+# `:2.0.0-alpha.2` with `@sha256:<digest>` (see release notes for the
+# current digest).
+
+services:
+  aresadb-node-1:
+    build: !reset null
+    image: ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2
+    pull_policy: always
+
+  aresadb-node-2:
+    image: ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2
+    pull_policy: always
+
+  aresadb-node-3:
+    image: ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2
+    pull_policy: always

@@ -17,11 +17,13 @@ same config shape run in Kubernetes later.
 
 ```
 docker/cluster/
-├── Dockerfile           # multi-stage build of the aresadb-cluster binary
-├── docker-compose.yml   # 3 services: aresadb-node-1..3
-├── bootstrap.sh         # one-shot: promote nodes 2 and 3 to voters, smoke test
-├── multi-range.sh       # Phase 2c-6: multi-range smoke (open range 42, write/read, assert isolation)
-└── README.md            # you are here
+├── Dockerfile               # multi-stage build of the aresadb-cluster binary
+├── docker-entrypoint.sh     # runtime init: chown data dir, drop to aresadb via gosu
+├── docker-compose.yml       # 3 services: aresadb-node-1..3 (build-from-source default)
+├── docker-compose.ghcr.yml  # override: pull `ghcr.io/yoreai/aresadb/cluster` instead of building
+├── bootstrap.sh             # one-shot: promote nodes 2 and 3 to voters, smoke test
+├── multi-range.sh           # Phase 2c-6: multi-range smoke (open range 42, write/read, assert isolation)
+└── README.md                # you are here
 ```
 
 Ports on the host:
@@ -40,12 +42,44 @@ network.
 
 ## Quick start
 
-From the repo root (`aresadb/`):
+There are two supported modes. Both end with the same three-voter
+cluster running locally; pick the one that matches your environment.
+
+### Mode A — build from source (developer loop)
 
 ```bash
 docker compose -f docker/cluster/docker-compose.yml up -d --build
 bash    docker/cluster/bootstrap.sh
 ```
+
+This is the default. The image gets tagged
+`aresadb-cluster:2.0.0-alpha.2` locally and rebuilds incrementally
+when crates change. Use this while iterating on the cluster code.
+
+### Mode B — pull the published GHCR image (operator path)
+
+```bash
+docker compose \
+  -f docker/cluster/docker-compose.yml \
+  -f docker/cluster/docker-compose.ghcr.yml \
+  up -d
+IMAGE=ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2 \
+  bash docker/cluster/bootstrap.sh
+```
+
+The override file (`docker-compose.ghcr.yml`) drops the `build:`
+directive and forces all three services to pull
+`ghcr.io/yoreai/aresadb/cluster:2.0.0-alpha.2` from GitHub Container
+Registry. You don't need a Rust toolchain or a source checkout
+beyond the two YAMLs and the two helper scripts. Operators wanting
+digest-pinned deployments should replace the `:2.0.0-alpha.2` tag
+with `@sha256:<digest>` on both the override file and the `IMAGE`
+env var (the current digest is in
+[`docs/release-notes/v2.0.0-alpha.2.md`](../../docs/release-notes/v2.0.0-alpha.2.md)).
+
+The `IMAGE=` env var is honoured by both `bootstrap.sh` and
+`multi-range.sh`; without it they default to the locally-built tag
+that Mode A produces.
 
 `bootstrap.sh` does the operator work you'd otherwise do by hand:
 
@@ -202,3 +236,14 @@ docker compose -f docker/cluster/docker-compose.yml down -v        # wipe volume
   initialised. That's why `depends_on: { condition: service_healthy }`
   on node-1 is meaningful: node-2 and node-3 only start `join`'ing
   once node-1's admin server is actually up.
+- **Privilege drop via `gosu`.** The image starts as root so the
+  entrypoint can `chown` the named-volume mount to the unprivileged
+  `aresadb` user before exec'ing the binary. Without this, Docker
+  Desktop on macOS / Windows materialises named volumes as
+  root-owned regardless of the image's underlying ownership, leaving
+  redb / fjall unable to write and producing
+  `Permission denied (os error 13)` at startup. See
+  [`docker-entrypoint.sh`](./docker-entrypoint.sh) for the full
+  rationale; set `ARESADB_RUN_AS_ROOT=1` to skip the privilege drop
+  (e.g. when bind-mounting a host directory whose UID/GID you want
+  to preserve).
