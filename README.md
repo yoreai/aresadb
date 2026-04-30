@@ -310,21 +310,25 @@ Cloud storage (S3, GCS) is integration-tested on every CI run against local MinI
 
 ## Roadmap
 
-- [x] Core engine (nodes, edges, properties, SQL, ACID)
-- [x] Vector embeddings and RAG support
-- [x] HNSW approximate nearest neighbor index
-- [x] Secondary B-tree property indexes
-- [x] Full-text search with BM25 ranking
-- [x] Transparent cloud tiering (S3/GCS)
-- [x] Batch insert APIs (37K+ nodes/sec)
-- [x] Filtered vector search (SQL WHERE + ANN)
-- [x] TCP wire protocol and server mode
-- [x] 330+ tests (unit, integration, stress)
-- [x] Python client (PyO3) on PyPI
-- [x] Docker images on GHCR
-- [ ] Cloud storage integration testing (S3/GCS)
-- [ ] Advanced SQL (JOINs, subqueries, CTEs)
-- [ ] Distributed mode (sharding, replication)
+**v1 (embedded, single-node) — stable.** Core engine, SQL, vectors,
+HNSW, secondary indexes, full-text/BM25, tiered cloud storage,
+batch insert APIs, filtered vector search, TCP wire protocol,
+Python client, Docker images, cloud-storage CI on emulators + real
+clouds. See [`CHANGELOG.md`](CHANGELOG.md) for the released history.
+
+**v2 (distributed) — `2.0.0-alpha.2` shipped on `main`.**
+
+- [x] Phase 0 — workspace, `StorageBackend` trait, madsim harness
+- [x] Phase 1 — single-shard cluster (openraft + gRPC + redb + 3-node compose), tagged `v2.0.0-alpha.1`
+- [x] Phase 2 — multi-Raft + range sharding + opt-in fjall LSM, tagged `v2.0.0-alpha.2`
+- [ ] Phase 3 — distributed query execution (router + planner + scatter-gather)
+- [ ] Phase 4 — distributed transactions (HLC + MVCC + parallel commit + SSI)
+- [ ] Phase 5 — thread-per-core LSM engine
+- [ ] Phase 6 — CDC change feeds + online distributed schema changes
+
+Implementation tracker: [`docs/phase-status.md`](docs/phase-status.md).
+Architecture: [`docs/architecture-v2.md`](docs/architecture-v2.md).
+Operator runbook: [`docs/operations.md`](docs/operations.md).
 
 ---
 

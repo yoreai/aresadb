@@ -8,6 +8,58 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`docs/release-notes/v2.0.0-alpha.2.md` intra-repo links**: the
+  release notes lived at `docs/release-notes/` but linked to peer docs
+  with `./docs/...` and to the workspace root with `./` prefixes,
+  meaning every relative link 404'd from the file's actual location.
+  All eight links repointed to the correct relative paths
+  (`../operations.md`, `../publishing-audit.md`, `../phase-status.md`,
+  `../architecture-v2.md`, `../../benchmarks/...`,
+  `../../docker/cluster/README.md`, `../../.github/workflows/release.yml`).
+- **`docker/cluster/README.md` + `docker/cluster/docker-compose.yml` +
+  `docs/operations.md`**: collapsed stray double-spacing in the
+  `bash    docker/cluster/bootstrap.sh` snippets so copy-paste runs
+  cleanly.
+
+### Changed (lint hygiene)
+
+- Cleaned up clippy lints across the v1 codebase to keep
+  `cargo clippy --workspace --all-targets -- -D warnings` green:
+  `is_multiple_of` over `% N == 0` (Rust 1.95 lint), `&[T]` slice
+  parameters over `&Vec<T>`, `is_empty()` over `len() >= 1`, struct
+  update syntax over field-by-field mutation, captured-identifier
+  format strings, removed unused `mut` bindings, range pattern
+  `(-1.0..=1.0).contains(&x)`, `const { ... assert!(...) }` blocks for
+  compile-time const validation, and replaced lossless-precision-flagged
+  literal `3.14` with `3.125` in test fixtures. No behavior change; all
+  tests still pass.
+
+### Added (remaining-work handoff)
+
+- **`../aresadb.md` cross-repo plan**: added a root-level AresaDB plan
+  matching the existing `aresalab.md` / `cortexa.md` pattern. Captures
+  the post-`v2.0.0-alpha.2` open work: v1 Zenodo DOI finalization, sized
+  v2 cluster benchmarks, v2 companion technical note, Phase 3 distributed
+  query, and cross-phase consistency hardening.
+- **`docs/phase-status.md` handoff pointer**: the phase tracker now
+  links back to the cross-repo plan and summarizes the three remaining
+  work lanes after alpha.2 closeout (publication, benchmarks,
+  implementation).
+- **README Roadmap refresh + AGENTS.md rewrite**: the public roadmap now
+  reflects post-alpha.2 reality (Phases 0–2 done; 3–6 open) instead of
+  the older v1-shaped checklist. AGENTS.md points to CHANGELOG +
+  phase-status + the cross-repo plan as the source-of-truth files.
+
+### Removed
+
+- **`TODO.md`** deleted. Its content was duplicating CHANGELOG (released
+  history), `docs/phase-status.md` (implementation tracker), README
+  Roadmap (public direction), and `../aresadb.md` (cross-repo open
+  work). Going forward those files own those concerns; there is
+  intentionally no `TODO.md` to drift out of sync.
+
 ### Added (publishing-audit follow-ups)
 
 - **`benches/v2_cluster_bench.rs`**: Criterion scaffold for the v2

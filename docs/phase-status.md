@@ -35,6 +35,19 @@ incrementally alongside the consistency / transaction semantics
 each later phase introduces. **Phase 3 — distributed query** is the
 next active phase.
 
+Cross-repo handoff / remaining-work view: `../../aresadb.md` in the local
+`yoreai/` workspace.
+Short version after the alpha.2 closeout:
+
+- **Manual publication work:** v1 technical-report Zenodo upload + DOI
+  stamp-back through Genass and Aresalab.
+- **Benchmark work:** grow `benches/v2_cluster_bench.rs` from the
+  alpha scaffold into a production-shaped 3-node suite before writing
+  the v2 companion note.
+- **Implementation work:** Phase 3 distributed query, then Phase 4
+  transactions, Phase 5 performance / custom LSM, and Phase 6 CDC +
+  online schema.
+
 ---
 
 ## Phase 0 — Foundations ☑

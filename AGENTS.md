@@ -2,20 +2,37 @@
 
 Instructions for AI coding agents working on AresaDB.
 
+## Source-of-truth files
+
+- **`CHANGELOG.md`** — released-version history (Keep a Changelog format)
+- **`docs/phase-status.md`** — v2 implementation phase tracker + decision log
+- **`docs/architecture-v2.md`** — v2 distributed architecture spec
+- **`docs/operations.md`** — operator runbook
+- **`README.md` Roadmap section** — public-facing direction
+- **`../aresadb.md`** (in the local `yoreai/` workspace, not in this repo)
+  — cross-repo open-work plan and next-move recommendations
+
+There is intentionally **no `TODO.md`**. Released history → `CHANGELOG.md`.
+Implementation status → `docs/phase-status.md`. Forward direction →
+README Roadmap + the cross-repo `../aresadb.md`.
+
 ## After every code change
 
-1. **Update `CHANGELOG.md`** — add entry under `[Unreleased]`
-2. **Update or add tests** — every changed behavior needs a test
-3. **Run `cargo check`** before committing (default features only, not `--all-features`)
-4. **Update `TODO.md`** if completing or adding roadmap items
+1. **Update `CHANGELOG.md`** — add entry under `[Unreleased]`.
+2. **Update or add tests** — every changed behavior needs a test.
+3. **Run `cargo check`** before committing (default features only, not
+   `--all-features`).
+4. **Update `docs/phase-status.md`** if the change advances or closes a
+   v2 phase checkpoint.
+5. **Update the README Roadmap** if a phase ships or a new phase opens.
 
 ## Before a version release
 
-1. Bump `version` in both `Cargo.toml` and `python/pyproject.toml`
-2. Move `[Unreleased]` entries in `CHANGELOG.md` to a new version section
-3. Update compare links at the bottom of `CHANGELOG.md`
-4. Update `org.opencontainers.image.version` in `Dockerfile`
-5. Commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`
+1. Bump `version` in both `Cargo.toml` and `python/pyproject.toml`.
+2. Move `[Unreleased]` entries in `CHANGELOG.md` to a new version section.
+3. Update compare links at the bottom of `CHANGELOG.md`.
+4. Update `org.opencontainers.image.version` in `Dockerfile`.
+5. Commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
 
 ## Architecture quick reference
 

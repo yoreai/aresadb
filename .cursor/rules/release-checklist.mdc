@@ -7,8 +7,12 @@ alwaysApply: true
 
 ## Every code change
 - `CHANGELOG.md` — add entry under `[Unreleased]`
-- `TODO.md` — mark completed items or add new ones
+- `docs/phase-status.md` — update if the change advances/closes a v2 phase checkpoint
+- `README.md` Roadmap section — update if a phase ships or a new phase opens
 - Add/update tests for changed behavior
+
+There is intentionally no `TODO.md`. See `AGENTS.md` for the full
+source-of-truth file list.
 
 ## Version bump (before tagging)
 - `Cargo.toml` — `version`

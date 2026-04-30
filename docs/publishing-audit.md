@@ -253,15 +253,16 @@ abstract.
   in the v2 note's §"Known limitations" when it lands.
 - **Packaging (Rust crate release to crates.io, Python package release to
   PyPI).** These are release-engineering tasks, not publishing-audit
-  items. Tracked in the root `task.md`.
+  items. Tracked in the cross-repo `../aresadb.md` plan (in the local
+  `yoreai/` workspace).
 
 ---
 
 ## 6. One-line summaries for downstream consumers
 
-- **Root `task.md`**: v2.0.0-alpha.2 tag landed; publishing refresh done
-  (benches re-run, metadata bumped); v2 companion note + sized v2 bench
-  suite queued.
+- **Cross-repo `../aresadb.md` plan**: v2.0.0-alpha.2 tag landed;
+  publishing refresh done (benches re-run, metadata bumped); v2
+  companion note + sized v2 bench suite queued.
 - **Aresalab `aresalab.md`**: AresaDB Phase 2 stays at "done except Zenodo
   upload"; a second Aresalab card lands alongside the v2 note.
 - **Aresadb `CHANGELOG.md`**: the `v2.0.0-alpha.2` entry already lists the
