@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
                     db.create_edges_batch(edge_buf).await?;
                     edge_buf = Vec::with_capacity(edge_batch_size);
 
-                    if edge_count % 50_000 == 0 {
+                    if edge_count.is_multiple_of(50_000) {
                         let rate = edge_count as f64 / edge_start.elapsed().as_secs_f64();
                         println!("  [{:>8} edges] {:.0} edges/sec", edge_count, rate);
                     }
@@ -480,16 +480,13 @@ async fn main() -> anyhow::Result<()> {
         .map(|f| format!("{:.4}", f))
         .collect::<Vec<_>>()
         .join(", ");
+    let full_query_vec_str = query_vec
+        .iter()
+        .map(|f| format!("{:.6}", f))
+        .collect::<Vec<_>>()
+        .join(", ");
     let vsql = format!(
-        "VECTOR SEARCH document FIELD embedding FOR [{}] WHERE topic = 'topic_5' LIMIT 5",
-        format!(
-            "{}",
-            query_vec
-                .iter()
-                .map(|f| format!("{:.6}", f))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
+        "VECTOR SEARCH document FIELD embedding FOR [{full_query_vec_str}] WHERE topic = 'topic_5' LIMIT 5"
     );
 
     println!("  SQL: VECTOR SEARCH document FIELD embedding FOR [{}, ...] WHERE topic = 'topic_5' LIMIT 5", query_vec_str);

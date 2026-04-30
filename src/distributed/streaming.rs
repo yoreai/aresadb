@@ -300,7 +300,7 @@ mod tests {
     #[tokio::test]
     async fn test_batched_stream() {
         let (sender, stream) = create_stream::<Vec<i32>>(10);
-        let mut batched = BatchedStream::new(stream);
+        let batched = BatchedStream::new(stream);
 
         tokio::spawn(async move {
             sender.send(vec![1, 2, 3]).await.unwrap();

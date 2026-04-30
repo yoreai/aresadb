@@ -42,7 +42,7 @@ fn bench_node_insert(c: &mut Criterion) {
         "field4": vec![1, 2, 3, 4, 5],
         "field5": {"nested": "object"},
         "field6": "longer string value for benchmarking purposes",
-        "field7": 3.14159,
+        "field7": 3.125,
         "field8": null,
         "field9": "another value",
         "field10": 999999

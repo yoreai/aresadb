@@ -182,7 +182,8 @@ fn bench_sharding(c: &mut Criterion) {
                 "item",
                 aresadb::storage::Value::from_json(serde_json::json!({"test": true})).unwrap(),
             );
-            black_box(manager.insert_node(&node).await.unwrap())
+            manager.insert_node(&node).await.unwrap();
+            black_box(())
         })
     });
 

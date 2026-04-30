@@ -265,7 +265,7 @@ mod query_parser_tests {
 
         assert_eq!(query.operation, QueryOperation::Update);
         assert_eq!(query.target, "users");
-        assert!(query.conditions.len() >= 1);
+        assert!(!query.conditions.is_empty());
     }
 
     #[test]

@@ -201,8 +201,10 @@ mod tests {
 
     #[test]
     fn test_constants() {
-        assert!(DEFAULT_QUERY_LIMIT > 0);
-        assert!(DEFAULT_CACHE_SIZE > 0);
-        assert!(DEFAULT_SHARD_COUNT > 0);
+        const {
+            assert!(DEFAULT_QUERY_LIMIT > 0);
+            assert!(DEFAULT_CACHE_SIZE > 0);
+            assert!(DEFAULT_SHARD_COUNT > 0);
+        }
     }
 }

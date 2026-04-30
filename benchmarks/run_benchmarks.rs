@@ -103,17 +103,17 @@ struct VectorResults {
     filtered_us: f64,
 }
 
-fn median(data: &mut Vec<f64>) -> f64 {
+fn median(data: &mut [f64]) -> f64 {
     data.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let mid = data.len() / 2;
-    if data.len() % 2 == 0 {
+    if data.len().is_multiple_of(2) {
         (data[mid - 1] + data[mid]) / 2.0
     } else {
         data[mid]
     }
 }
 
-fn percentile(data: &mut Vec<f64>, p: f64) -> f64 {
+fn percentile(data: &mut [f64], p: f64) -> f64 {
     data.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let idx = ((p / 100.0) * (data.len() - 1) as f64).round() as usize;
     data[idx.min(data.len() - 1)]
@@ -492,7 +492,7 @@ async fn main() -> anyhow::Result<()> {
             os: std::env::consts::OS.to_string(),
             arch: std::env::consts::ARCH.to_string(),
             node_count,
-            edge_count: edge_count,
+            edge_count,
             vector_count,
             vector_dim,
         },

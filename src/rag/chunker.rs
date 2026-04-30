@@ -458,7 +458,7 @@ mod tests {
         let content = "This is sentence one. This is sentence two. This is sentence three. This is sentence four.";
         let chunks = chunker.chunk("doc2", content);
 
-        assert!(chunks.len() >= 1);
+        assert!(!chunks.is_empty());
         for chunk in &chunks {
             assert!(!chunk.content.is_empty());
         }
@@ -471,7 +471,7 @@ mod tests {
         let content = "First paragraph here.\n\nSecond paragraph here.\n\nThird paragraph here.";
         let chunks = chunker.chunk("doc3", content);
 
-        assert!(chunks.len() >= 1);
+        assert!(!chunks.is_empty());
     }
 
     #[test]

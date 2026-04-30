@@ -501,8 +501,10 @@ mod tests {
 
     #[test]
     fn test_become_leader() {
-        let mut config = ReplicaConfig::default();
-        config.peers = vec!["peer1".to_string(), "peer2".to_string()];
+        let config = ReplicaConfig {
+            peers: vec!["peer1".to_string(), "peer2".to_string()],
+            ..Default::default()
+        };
         let replica = ReplicaSet::new(config);
 
         replica.become_leader();

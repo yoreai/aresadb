@@ -293,7 +293,7 @@ mod tests {
         let mut nodes = vec![];
 
         // Node similar to query
-        let mut n1 = VectorNodeBuilder::new("doc")
+        let n1 = VectorNodeBuilder::new("doc")
             .text("content", "Hello world")
             .embedding("embedding", vec![1.0, 0.0, 0.0])
             .build();
@@ -375,7 +375,7 @@ mod tests {
         assert_eq!(v1.len(), 384);
 
         // Values should be in range [-1, 1]
-        assert!(v1.iter().all(|&x| x >= -1.0 && x <= 1.0));
+        assert!(v1.iter().all(|&x| (-1.0..=1.0).contains(&x)));
     }
 
     #[test]
