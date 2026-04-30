@@ -6,7 +6,7 @@
 #
 # Lifecycle:
 #   docker compose -f docker/cluster/docker-compose.yml up -d
-#   bash    docker/cluster/bootstrap.sh          # one-shot: promotes 2 and 3 to voters
+#   bash docker/cluster/bootstrap.sh          # one-shot: promotes 2 and 3 to voters
 #
 # The admin CLI inside `bootstrap.sh` runs inside a throwaway
 # aresadb-cluster container so you don't need the binary on the host.

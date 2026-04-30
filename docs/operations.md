@@ -81,8 +81,8 @@ Phase 1d / Phase 2c-6 decision logs in
 
 ```bash
 docker compose -f docker/cluster/docker-compose.yml up -d --build
-bash    docker/cluster/bootstrap.sh        # promotes nodes 2 + 3 to voters
-bash    docker/cluster/multi-range.sh      # opens range 42, exercises range isolation
+bash docker/cluster/bootstrap.sh        # promotes nodes 2 + 3 to voters
+bash docker/cluster/multi-range.sh      # opens range 42, exercises range isolation
 ```
 
 **Pull from GHCR** (operator path, no Rust toolchain on the host):

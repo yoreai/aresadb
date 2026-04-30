@@ -49,7 +49,7 @@ cluster running locally; pick the one that matches your environment.
 
 ```bash
 docker compose -f docker/cluster/docker-compose.yml up -d --build
-bash    docker/cluster/bootstrap.sh
+bash docker/cluster/bootstrap.sh
 ```
 
 This is the default. The image gets tagged
